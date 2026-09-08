@@ -6,7 +6,10 @@
 // exactly to BR's. One computed fold-2 transform, assigned to both.
 // ============================================
 
-const FOLD1_HINGE = 0.5;   // nudge toward 0.46 if the crease needs to move up
+const FOLD1_HINGE = 0.4764; // measured off Open.png, not assumed: the crease's
+                            // bright ridge peaks at row 183 and its shadow troughs
+                            // at row 180 of 381, so the fold line is 181.5/381.
+                            // At 0.5 the hinge sat ~9px low, in flat paper.
 const LIFT1 = 6;           // px — fold 1 thickness lift, tapers to 0 when open
 const LIFT2 = 2;           // px — fold 2 thickness lift, tapers to 0 when open
 // Closed-state depths: TL = LIFT1 (6), TR = LIFT1 - LIFT2 (4),
