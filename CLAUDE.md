@@ -128,19 +128,27 @@ unrevealed sections had to be toggled on with `visibility:hidden`, which looked 
 Now every rotating piece has a front face (real artwork) and a back face (plain paper-tone gradient,
 pre-rotated 180°), both `backface-visibility: hidden`. Something is always visible, continuously.
 
-**The back faces are masked to the torn silhouette** (`silhouette.js`). The gradient alone is a
-rectangle, so every state before fully-open read as cardboard instead of a folded note. Each back
-face is masked to its own quadrant's alpha from `Open.png`, **mirrored across its hinge axis** — a
-back face is its front seen from behind, so a rotateX hinge mirrors vertically and a rotateY hinge
-mirrors horizontally. Get a mirror backwards and the folded outline is subtly wrong in a way that is
-hard to see by eye; it was checked by rendering the flap in isolation and comparing it against the
-mirrored source (IoU 0.99+, versus 0.53-0.70 for the wrong mirrors).
+**The back faces are built from the artwork** (`silhouette.js`). A flat gradient clipped to the torn
+shape still read as card on-device: no grain, and a dead cut edge where the front has a lit torn one.
+So each back face is that quadrant of `Open.png` itself, **mirrored across its hinge axis** — a back
+face is its front seen from behind, so a rotateX hinge mirrors vertically and a rotateY hinge mirrors
+horizontally. That carries the real paper grain, the real torn edge with its rim light, and the real
+silhouette in one go; the image's own alpha does the shaping, so there is no separate mask.
 
-The tone stays in `style.css` (`.face-back`) so it is still tunable there; `silhouette.js` supplies
-shape only. Masks are `100% 100%` of the face box, so they are resolution- and resize-independent and
-are built once. The crease split is read from the live layout, so it follows `FOLD1_HINGE` instead of
-duplicating it. This is not the Phase 2 shading work — no filters or shadows were re-added, and the
-fully-open state is pixel-identical.
+Get a mirror backwards and the folded outline is wrong. That was hard to see while the backs were
+flat, so it was checked by rendering a flap in isolation against the mirrored source (IoU 0.99+,
+versus 0.53-0.70 for the wrong mirrors). Now that the backs carry ruling and crease shading, a wrong
+mirror is obvious by eye too.
+
+`WASH` (0.42) is the one dial: how far the back is washed toward the paper's own mean colour, which
+knocks the ruling back to the faint show-through you get from behind a real sheet. 0 leaves the back
+identical to the front, 1 is a flat fill. The mean colour is measured from the image, so it follows
+whatever template is in use rather than a hard-coded cream. Backgrounds are `100% 100%` of the face
+box, so they are resolution- and resize-independent and are built once. The crease split is read from
+the live layout, so it follows `FOLD1_HINGE` instead of duplicating it.
+
+This is texture, not the Phase 2 shading work — no filters, no drop-shadows, no re-lighting, and the
+fully-open state is untouched.
 
 **Fold 2's rotation sign matters, not just its destination.** `rot2 = -180 * (1 - progress)` sweeps
 through *negative* angles. This determines which way the flap arcs mid-rotation. Negative = swings
@@ -176,13 +184,18 @@ percentages — percentages caused nested-math errors across the multi-level DOM
 drop-shadow. This was to make raw 3D geometry inspectable without polish masking structural bugs.
 Re-adding shading is Phase 2.
 
-**The debug panel is still present in `index.html` and should stay for now.** It's the row of
+**The debug panel is still in `index.html`, behind `?debug=1`, and should stay for now.** It's the row of
 buttons ("Fold 1 — 0% 25% 50% 75% 100%", same for Fold 2) that force exact geometry states without a
 live drag introducing another variable. Fold 1 buttons set `stage1Progress = p, stage2Progress = 0`.
 Fold 2 buttons set `stage1Progress = 1, stage2Progress = p`. Both reset `isFullyOpen = false` and kill
 in-flight GSAP tweens, so states are deterministic. The buttons `stopPropagation` on pointer events so
-they don't leak into the paper's drag handler. **Remove this panel in Phase 4, before any shareable
-link exists.** Do not remove it earlier.
+they don't leak into the paper's drag handler.
+
+**It is off in the real experience.** The panel carries an inline `display:none` — an `[hidden]`
+attribute loses to the `#debug-panel` rule in `style.css`, which is why it is inline — and a short
+script in `index.html` reveals it for `?debug=1`. So `index.html` is the recipient's experience and
+`index.html?debug=1` is the test rig. **Delete the markup and that script together in Phase 4.** Do
+not delete them earlier: this panel is what has caught every real geometry bug so far.
 
 ### 3b. The handwriting lab — WORKING, DO NOT REWRITE
 
@@ -394,10 +407,10 @@ branch, root folder. Every merge then publishes to `https://<user>.github.io/<re
 experience at `/index.html` and the handwriting lab at `/write.html`. Testing becomes "open a URL on
 the phone," with no file syncing.
 
-**Caveat: the repo is currently private**, and GitHub Pages on a private repo requires a paid plan.
-If Pages isn't available, the repo needs to be made public (there is nothing sensitive in it) or
-another static host used. Do not assume a live Pages URL exists — confirm it before writing test
-instructions that depend on one.
+**The repo is public and Pages is live** at `https://hsyn22.github.io/Unwrapped/`, serving `main` from
+the root folder. So a test link only shows new work *after* the PR is merged — check what Pages is
+actually serving before writing test instructions, rather than assuming the branch is live. Mobile
+browsers also cache these pages hard; a `?v=2` on the URL is the reliable way to force a fresh copy.
 
 Acode's Preview button also serves over HTTP for local checks.
 
