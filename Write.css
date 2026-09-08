@@ -1,0 +1,97 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    background: #05050a;
+    overscroll-behavior: none;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #f5f5f5;
+}
+
+#lab {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    touch-action: none;
+}
+
+/* No background, no border-radius, no box-shadow.
+   Any of those would re-introduce a visible rectangle. */
+#surface {
+    position: relative;
+    width: 240px;
+    height: 320px;
+    background: transparent;
+}
+
+#paper,
+#ink {
+    position: absolute;
+    inset: 0;
+    display: block;
+    touch-action: none;
+}
+
+/* Follows the torn silhouette, not a rectangle. */
+#paper {
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+}
+
+/* Ink sits above the paper; JS masks it to the paper shape. */
+#ink {
+    -webkit-mask-size: 100% 100%;
+            mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+}
+
+#status {
+    font-size: 0.75rem;
+    color: #ffffff88;
+    letter-spacing: 0.02em;
+    min-height: 1em;
+    text-align: center;
+    padding: 0 12px;
+}
+
+#controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 8px;
+}
+
+#controls button {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: #ffffff18;
+    color: #fff;
+    border: 1px solid #ffffff44;
+    border-radius: 6px;
+    touch-action: manipulation;
+}
+
+#controls button:active { background: #ffffff33; }
+
+#controls button.primary {
+    background: #ffffff2e;
+    border-color: #ffffff88;
+}
+
+#controls button:disabled {
+    opacity: 0.35;
+}
