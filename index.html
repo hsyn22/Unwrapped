@@ -36,7 +36,7 @@
 
         <div id="hint">Swipe up to unfold</div>
 
-        <div id="debug-panel">
+        <div id="debug-panel" style="display:none">
             <div class="dbg-row">
                 <span>Fold 1 —</span>
                 <button class="dbg" data-fold="1" data-p="0">0%</button>
@@ -56,6 +56,17 @@
         </div>
 
     </main>
+
+    <script>
+        // The fold-state panel is off in the real experience. Add ?debug=1 to
+        // the URL to bring it back for testing exact geometry states.
+        // Delete the panel and this script together in Phase 4.
+        // Inline display beats the #debug-panel rule in style.css, which an
+        // [hidden] attribute would lose to.
+        if (/[?&]debug=1(&|$)/.test(location.search)) {
+            document.getElementById('debug-panel').style.display = '';
+        }
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
     <script src="script.js"></script>

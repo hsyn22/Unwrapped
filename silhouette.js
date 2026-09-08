@@ -1,32 +1,37 @@
 // ============================================
-// UNWRAPPED — Folded-back silhouette
+// UNWRAPPED — The back of the paper
 //
-// Each rotating piece has a front face (Open.png artwork, which already
-// carries the torn shape in its alpha) and a back face (plain paper-tone).
-// The back faces had no shape, so every state before fully-open showed
-// hard-edged rectangles — cardboard, not a torn note. This masks each one
-// to its own quadrant's silhouette.
+// Each rotating piece has a front face (Open.png artwork) and a back face.
+// The back face used to be a flat CSS gradient in a torn-shaped hole, which
+// read as card rather than paper: no grain, and a dead cut edge where the
+// front has a lit torn one.
 //
-// A back face is its front seen from behind, so its content is the front
-// MIRRORED ACROSS ITS HINGE AXIS:
+// So the back faces are built from the artwork itself. Each one is that
+// quadrant of Open.png, MIRRORED ACROSS ITS HINGE AXIS:
 //   fold 1 hinges on rotateX  -> mirror vertically
 //   fold 2 hinges on rotateY  -> mirror horizontally
 // (The face's own 180° pre-rotation and its parent hinge's rotation cancel
-// out when the piece is fully folded, so the pre-mirrored content is what
-// lands face-up on the piece underneath.)
+// out when the piece is fully folded, so the pre-mirrored image is what lands
+// face-up on the piece underneath.) That carries the real paper grain, the
+// real torn edge with its rim light, and the real silhouette in one go — the
+// image's own alpha does the shaping, so no mask is needed.
 //
-// Shape only. The paper-back tone stays in style.css (.face-back) so it
-// is still tunable there. Masks are sized 100% x 100% of the face box, so
-// they are resolution- and resize-independent: built once, never rebuilt.
+// The ruling is then knocked back with a wash of the paper's own mean colour,
+// because you see the ruling of a sheet only faintly from behind. WASH is the
+// one dial here: 0 leaves the back identical to the front, 1 is a flat fill.
+//
+// This is texture, not Phase 2 shading — no filters, no drop-shadows, no
+// re-lighting, and the fully-open state is untouched.
 //
 // Reading the pixels needs http:// — on file:// the canvas is tainted and
-// toDataURL throws. That is caught, and the faces are left as they were
-// rather than broken.
+// toDataURL throws. That is caught, and the faces keep the plain CSS gradient
+// from style.css rather than breaking.
 // ============================================
 
 (function () {
 
-    const SRC = 'Images/ImgSet1/Open.png';
+    const SRC  = 'Images/ImgSet1/Open.png';
+    const WASH = 0.42;   // how far the back is washed toward flat paper tone
 
     const scene   = document.getElementById('paper-scene');
     const fold1   = document.getElementById('fold1');
@@ -42,14 +47,14 @@
     const img = new Image();
     img.onload = () => {
         try {
-            applyMasks(img);
+            paint(img);
         } catch (err) {
             // Tainted canvas (file://) — leave the plain back faces alone.
         }
     };
     img.src = SRC;
 
-    function applyMasks(img) {
+    function paint(img) {
         // Crease positions are read from the live layout, so this tracks
         // FOLD1_HINGE in script.js instead of duplicating it.
         const fx = fold1.offsetWidth  / scene.offsetWidth;   // vertical crease
@@ -60,27 +65,25 @@
         const H = img.naturalHeight;
         const cx = W * fx;
         const cy = H * fy;
+        const tone = meanPaperTone(img);
 
-        //                     sx  sy  sw       sh       flipX  flipY
-        maskFace(backTL, img,  0,  0,  cx,      cy,      false, true);
-        maskFace(backTR, img,  cx, 0,  W - cx,  cy,      true,  false);
-        maskFace(backBR, img,  cx, cy, W - cx,  H - cy,  true,  false);
+        //                  sx  sy  sw       sh       flipX  flipY
+        set(backTL, img, 0,  0,  cx,      cy,      false, true,  tone);
+        set(backTR, img, cx, 0,  W - cx,  cy,      true,  false, tone);
+        set(backBR, img, cx, cy, W - cx,  H - cy,  true,  false, tone);
     }
 
-    function maskFace(el, img, sx, sy, sw, sh, flipX, flipY) {
-        const url = silhouette(img, sx, sy, sw, sh, flipX, flipY);
-        el.style.webkitMaskImage  = `url(${url})`;
-        el.style.maskImage        = `url(${url})`;
-        el.style.webkitMaskSize   = '100% 100%';
-        el.style.maskSize         = '100% 100%';
-        el.style.webkitMaskRepeat = 'no-repeat';
-        el.style.maskRepeat       = 'no-repeat';
+    function set(el, img, sx, sy, sw, sh, flipX, flipY, tone) {
+        const url = backFace(img, sx, sy, sw, sh, flipX, flipY, tone);
+        el.style.backgroundImage  = `url(${url})`;   // replaces the CSS gradient
+        el.style.backgroundSize   = '100% 100%';
+        el.style.backgroundRepeat = 'no-repeat';
     }
 
-    // White where the paper is, transparent where it isn't, mirrored across
-    // the hinge axis. The soft alpha along the torn edge is kept, so the
-    // masked edge stays as feathered as the artwork's.
-    function silhouette(img, sx, sy, sw, sh, flipX, flipY) {
+    // The quadrant, mirrored across its hinge, washed back toward flat tone.
+    // Alpha is preserved throughout, so the torn edge keeps the artwork's own
+    // feathering and the piece keeps its exact silhouette.
+    function backFace(img, sx, sy, sw, sh, flipX, flipY, tone) {
         const cw = Math.max(1, Math.round(sw));
         const ch = Math.max(1, Math.round(sh));
 
@@ -93,12 +96,37 @@
         x.scale(flipX ? -1 : 1, flipY ? -1 : 1);
         x.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
 
+        // source-atop keeps the wash inside the paper and respects the soft
+        // alpha along the tear, so the edge does not gain a hard rim.
         x.setTransform(1, 0, 0, 1, 0, 0);
-        x.globalCompositeOperation = 'source-in';
-        x.fillStyle = '#fff';
+        x.globalCompositeOperation = 'source-atop';
+        x.fillStyle = `rgba(${tone[0]}, ${tone[1]}, ${tone[2]}, ${WASH})`;
         x.fillRect(0, 0, cw, ch);
 
         return c.toDataURL('image/png');
+    }
+
+    // Mean colour of the opaque paper, so the wash matches whatever template
+    // is in use rather than a hard-coded cream.
+    function meanPaperTone(img) {
+        const w = Math.min(160, img.naturalWidth);
+        const h = Math.max(1, Math.round(w * img.naturalHeight / img.naturalWidth));
+
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.drawImage(img, 0, 0, w, h);
+
+        const d = x.getImageData(0, 0, w, h).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < w * h; i++) {
+            const o = i * 4;
+            if (d[o + 3] < 250) continue;
+            r += d[o]; g += d[o + 1]; b += d[o + 2]; n++;
+        }
+        if (!n) return [232, 224, 208];
+        return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
     }
 
 })();
