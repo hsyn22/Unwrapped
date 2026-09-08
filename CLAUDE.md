@@ -257,6 +257,40 @@ silhouette.
 **Pixel reading requires HTTP.** On `file://` the canvas is tainted and `getImageData` throws. The
 status line reports which path was taken; if it says to serve over http, that's why.
 
+### 3d. Handwriting on the paper — WORKING
+
+Files: `ink.js` (the folded paper), `handoff.js` (the lab's "Send to paper" button).
+
+**The ink is on the paper, not over it.** Each of the four quadrants gets its own canvas, parented to
+that quadrant's front face, so the ink inherits that piece's 3D transform and rides the folds with
+it. There is no full-page overlay — that was the whole point of Phase 3.
+
+**Every canvas draws the whole message**, translated by its own quadrant's origin, and clips what
+falls outside itself. That is what keeps a stroke continuous across a crease instead of stopping at
+it: a letter written over the middle is drawn twice, once by each side, and meets exactly. Measured
+across both creases — no gap columns, 1px maximum step, and that step is tens of px away from the
+crease. Do not "optimise" this into one canvas per stroke or a single shared canvas; the redundancy
+IS the crease fix.
+
+**Ink is on the front faces only**, which carry `backface-visibility: hidden`, so a message can never
+be seen through the back of the paper.
+
+**Replay triggers on the geometry, not on `isFullyOpen`.** `ink.js` polls script.js's
+`stage1Progress` / `stage2Progress` and fires when both pass 0.999. `isFullyOpen` stays false for the
+debug buttons, and the debug buttons are how this gets tested — triggering on the flag would make it
+untestable. Leaving the fully-open state clears the ink and re-arms, so re-opening writes it again.
+
+**The curve maths in `ink.js` is a deliberate copy of `write.js`'s.** Both must produce identical
+letterforms and `write.js` is locked, so it repeats the constants, the width recurrence and the
+Catmull-Rom sampling rather than reaching into it. **If you tune one, tune both.** Widths are not
+serialized, so they are recomputed from velocity with the same recurrence capture used.
+
+**Message source:** `localStorage` (key `unwrapped:message`, written by the lab's Send button), then
+`message.json` if present. No link format, no network, no backend — that is Phase 4. The "no message
+saved yet" line in `#hint` is a Phase 3 affordance and goes away with the debug panel.
+
+---
+
 ---
 
 ## 4. Rejected approaches — do not re-suggest
@@ -293,11 +327,11 @@ interaction.
 Shadows, crease shading, subtle paper thickness, natural easing, sound. This is where the stripped-out
 filters come back.
 
-**Phase 3 — Handwriting integration. PARTIALLY DONE.**
-The standalone lab works. What remains: rendering recorded strokes **onto the paper surface itself**
-within the fold system — belonging to the correct paper surface, not floating as an overlay above the
-website — and triggering replay when the paper reaches fully-open. The normalized-by-width coordinate
-space exists precisely so strokes map onto that surface without distortion.
+**Phase 3 — Handwriting integration. DONE — see 3d.**
+The lab records, the folded paper replays. Strokes are drawn onto the quadrant surfaces themselves,
+continuous across both creases, and replay fires when the paper reaches fully-open. The
+normalized-by-width coordinate space is what lets them map on without distortion.
+Deliberately NOT included: any link format, any network, any storage beyond one browser — Phase 4.
 
 **Phase 4 — Creation flow and sharing. NOT STARTED.**
 Creation page, template picker / config system (`config.json` exists but is unwired), shareable link
@@ -322,9 +356,12 @@ Unwrapped/
     style.css            folding styles      [LOCKED]
     script.js            folding logic       [LOCKED]
     silhouette.js        folded-back masks
+    ink.js               handwriting on the paper
+    message.json         (optional — a message for index.html to load)
     write.html           handwriting lab
     write.css            handwriting lab styles
     write.js             handwriting engine  [LOCKED]
+    handoff.js           lab -> paper hand-off button
 ```
 
 ---
