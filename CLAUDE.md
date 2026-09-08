@@ -180,6 +180,35 @@ aspect ratio to that exactly, then fits within ~92% viewport width / ~80% height
 resize. Quadrant artwork uses absolute pixel `background-size`/`background-position`, not
 percentages — percentages caused nested-math errors across the multi-level DOM.
 
+**`FOLD1_HINGE` is measured, not assumed.** The crease in `Open.png` is not at the midpoint. Its lit
+ridge peaks at row 183 and its shadow troughs at row 180 of 381, so the fold line is 181.5/381 =
+**0.4764**. At 0.5 the hinge sat ~9px low and folded through flat paper just below the crease. If the
+paper template ever changes, re-measure: scan the row-mean luminance across the sheet interior for
+the strongest ridge-to-trough pair. `FOLD1_HINGE` drives the DOM split *and* the artwork offsets
+together, so the sheet still reassembles exactly when open; `silhouette.js` and `ink.js` both read the
+crease off the live layout, so they follow it for free.
+
+**Release feel — the flick and the settle.** Drag tracking is untouched; this is only what happens
+after you let go. A fixed 0.45s `power2.out` snap that ignored your speed and took the same time
+whether it had 5% or 90% left to travel read as a hinged board. Now: the duration follows the
+distance left (`SNAP_MIN` 0.16s to `SNAP_MAX` 0.60s), so a nearly-open flap settles in ~100ms instead
+of taking the full beat; and release velocity decides the direction when it clears `FLICK_V`, so a
+flick carries the fold however far you actually got. `FLICK_V` (0.0035 progress/ms) was calibrated
+against real gesture speeds — an unhurried drag reads ~0.0008 and a brisk one ~0.0016, both of which
+still leave `OPEN_THRESHOLD` in charge, while a flick reads ~0.006 and up. The ease stays **monotone**
+(`power3.out`): any overshoot would carry fold 1 past flat and push the flap below the sheet under it.
+
+**The background is a lit room, not a starfield** (`#sky`, `#glow`, `#stars` in `index.html` /
+`style.css`). The paper is lit warmly from the left, so the space around it is too, or the paper reads
+as a cut-out pasted on black. `#sky` is the static base: vignette, a warm wash from off-canvas left, a
+cool fall-off to the right. `#glow` is the source itself, breathing over 19s. `#stars` is dust on
+three tile sizes with no common factor — the old single 200px tile read as a visible grid — drifting
+over 120s. **Everything that moves does so by `transform`/`opacity` only**, so it stays on the
+compositor: at 6x CPU throttle a fold drag runs a 16.6ms median with zero frames over 32ms. Honour
+`prefers-reduced-motion`, which is already wired. A noise/dither layer was tried against gradient
+banding and measured as doing nothing (longest flat run 12px vs 11px) — Chrome already dithers these
+gradients. Don't re-add it.
+
 **Filters and shadows are deliberately stripped** from the fold system. No brightness dimming, no
 drop-shadow. This was to make raw 3D geometry inspectable without polish masking structural bugs.
 Re-adding shading is Phase 2.
@@ -336,9 +365,10 @@ Correct closed shape; correct fold 1 and fold 2 geometry; correct UP-then-RIGHT 
 spawning/disappearing/pass-through; correct final dimensions matching Open.png; smooth one-finger
 interaction.
 
-**Phase 2 — Physical realism. NOT STARTED.**
-Shadows, crease shading, subtle paper thickness, natural easing, sound. This is where the stripped-out
-filters come back.
+**Phase 2 — Physical realism. PART DONE.**
+Done: natural easing and the flick (see 3a), and the lit background. Still to do: shadows — the paper
+still floats with nothing under it — crease shading, subtle paper thickness, sound. This is where the
+stripped-out filters come back.
 
 **Phase 3 — Handwriting integration. DONE — see 3d.**
 The lab records, the folded paper replays. Strokes are drawn onto the quadrant surfaces themselves,

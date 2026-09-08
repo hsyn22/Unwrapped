@@ -8,7 +8,7 @@
 html, body {
     height: 100%;
     overflow: hidden;
-    background: #05050a;
+    background: #06060b;
 }
 
 body {
@@ -17,20 +17,85 @@ body {
     color: #f5f5f5;
 }
 
-#stars {
+/* ---- background -------------------------------------------------------
+   The paper is lit warmly from the left. The room it sits in should be lit
+   the same way, or the paper looks like a cut-out. So: a warm source off to
+   the left, cool depth falling away to the right, and a vignette holding the
+   middle. Everything that moves here moves by transform/opacity only, so it
+   stays on the compositor and never costs the fold a frame.            */
+
+/* Static base. Layers paint first-on-top. */
+#sky {
     position: fixed;
     inset: 0;
-    background-image:
-        radial-gradient(2px 2px at 20% 30%, #ffffff88, transparent),
-        radial-gradient(2px 2px at 70% 65%, #ffffff66, transparent),
-        radial-gradient(1.5px 1.5px at 40% 80%, #ffffff55, transparent),
-        radial-gradient(1.5px 1.5px at 85% 20%, #ffffff77, transparent),
-        radial-gradient(1px 1px at 55% 45%, #ffffff44, transparent),
-        radial-gradient(1.5px 1.5px at 10% 60%, #ffffff66, transparent),
-        radial-gradient(1px 1px at 90% 85%, #ffffff55, transparent);
-    background-repeat: repeat;
-    background-size: 200px 200px;
     z-index: 0;
+    background:
+        radial-gradient(78% 68% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.55) 100%),
+        radial-gradient(120% 90% at -12% 44%, rgba(255, 164, 88, 0.17), rgba(255, 138, 68, 0.05) 38%, transparent 68%),
+        radial-gradient(95% 85% at 112% 74%, rgba(44, 62, 112, 0.20), transparent 62%),
+        #06060b;
+}
+
+/* The source itself, off-canvas to the left, breathing slowly. */
+#glow {
+    position: fixed;
+    left: -34vmax;
+    top: 50%;
+    width: 88vmax;
+    height: 88vmax;
+    margin-top: -44vmax;
+    border-radius: 50%;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(closest-side,
+        rgba(255, 178, 104, 0.15),
+        rgba(255, 150, 80, 0.05) 46%,
+        transparent 72%);
+    will-change: transform, opacity;
+    animation: glow-breathe 19s ease-in-out infinite;
+}
+
+@keyframes glow-breathe {
+    0%, 100% { transform: scale(1)    translate3d(0, 0, 0);          opacity: 0.72; }
+    50%      { transform: scale(1.11) translate3d(2.5vmax, -1.5vmax, 0); opacity: 1; }
+}
+
+/* Dust. Three tile sizes with no common factor, so the repeat never reads as
+   a grid the way a single 200px tile did. Oversized and drifting on a
+   transform, because animating background-position would repaint. */
+#stars {
+    position: fixed;
+    inset: -12%;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+        radial-gradient(1.6px 1.6px at 17% 23%, #ffffff9e, transparent),
+        radial-gradient(1.2px 1.2px at 64% 71%, #ffffff7a, transparent),
+        radial-gradient(1.8px 1.8px at 88% 12%, #ffe9d1a8, transparent),
+        radial-gradient(1px 1px   at 41% 88%, #ffffff66, transparent),
+        radial-gradient(1.3px 1.3px at 8% 62%, #ffffff70, transparent),
+        radial-gradient(1px 1px   at 73% 38%, #ffe4c680, transparent),
+        radial-gradient(1.5px 1.5px at 31% 51%, #ffffff5e, transparent),
+        radial-gradient(1px 1px   at 95% 79%, #ffffff55, transparent);
+    background-repeat: repeat;
+    background-size: 617px 617px, 431px 431px, 293px 293px;
+    opacity: 0.6;
+    will-change: transform, opacity;
+    animation: star-drift 120s linear infinite, star-breathe 11s ease-in-out infinite;
+}
+
+@keyframes star-drift {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(-293px, -180px, 0); }
+}
+
+@keyframes star-breathe {
+    0%, 100% { opacity: 0.46; }
+    50%      { opacity: 0.68; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #glow, #stars { animation: none; }
 }
 
 #experience {
