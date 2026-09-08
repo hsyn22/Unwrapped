@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Unwrapped ❤️</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="stars"></div>
+
+    <main id="experience">
+
+        <div id="paper-container">
+            <div id="paper-scene">
+
+                <div class="leaf" id="panel-bl"></div>
+
+                <div class="hinge hinge-x" id="fold1">
+                    <div class="face face-front" id="fold1-front">
+                        <div class="leaf" id="panel-tl"></div>
+                        <div class="hinge hinge-y" id="fold2-tr">
+                            <div class="face face-front" id="panel-tr"></div>
+                            <div class="face face-back face-back-y"></div>
+                        </div>
+                    </div>
+                    <div class="face face-back face-back-x"></div>
+                </div>
+
+                <div class="hinge hinge-y" id="fold2-br">
+                    <div class="face face-front" id="panel-br"></div>
+                    <div class="face face-back face-back-y"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="hint">Swipe up to unfold</div>
+
+        <div id="debug-panel">
+            <div class="dbg-row">
+                <span>Fold 1 —</span>
+                <button class="dbg" data-fold="1" data-p="0">0%</button>
+                <button class="dbg" data-fold="1" data-p="0.25">25%</button>
+                <button class="dbg" data-fold="1" data-p="0.5">50%</button>
+                <button class="dbg" data-fold="1" data-p="0.75">75%</button>
+                <button class="dbg" data-fold="1" data-p="1">100%</button>
+            </div>
+            <div class="dbg-row">
+                <span>Fold 2 —</span>
+                <button class="dbg" data-fold="2" data-p="0">0%</button>
+                <button class="dbg" data-fold="2" data-p="0.25">25%</button>
+                <button class="dbg" data-fold="2" data-p="0.5">50%</button>
+                <button class="dbg" data-fold="2" data-p="0.75">75%</button>
+                <button class="dbg" data-fold="2" data-p="1">100%</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
