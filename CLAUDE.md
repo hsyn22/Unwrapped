@@ -128,6 +128,20 @@ unrevealed sections had to be toggled on with `visibility:hidden`, which looked 
 Now every rotating piece has a front face (real artwork) and a back face (plain paper-tone gradient,
 pre-rotated 180°), both `backface-visibility: hidden`. Something is always visible, continuously.
 
+**The back faces are masked to the torn silhouette** (`silhouette.js`). The gradient alone is a
+rectangle, so every state before fully-open read as cardboard instead of a folded note. Each back
+face is masked to its own quadrant's alpha from `Open.png`, **mirrored across its hinge axis** — a
+back face is its front seen from behind, so a rotateX hinge mirrors vertically and a rotateY hinge
+mirrors horizontally. Get a mirror backwards and the folded outline is subtly wrong in a way that is
+hard to see by eye; it was checked by rendering the flap in isolation and comparing it against the
+mirrored source (IoU 0.99+, versus 0.53-0.70 for the wrong mirrors).
+
+The tone stays in `style.css` (`.face-back`) so it is still tunable there; `silhouette.js` supplies
+shape only. Masks are `100% 100%` of the face box, so they are resolution- and resize-independent and
+are built once. The crease split is read from the live layout, so it follows `FOLD1_HINGE` instead of
+duplicating it. This is not the Phase 2 shading work — no filters or shadows were re-added, and the
+fully-open state is pixel-identical.
+
 **Fold 2's rotation sign matters, not just its destination.** `rot2 = -180 * (1 - progress)` sweeps
 through *negative* angles. This determines which way the flap arcs mid-rotation. Negative = swings
 toward the viewer first, then settles away. The other direction read as physically wrong even though
@@ -307,6 +321,7 @@ Unwrapped/
     index.html           folding experience  [LOCKED]
     style.css            folding styles      [LOCKED]
     script.js            folding logic       [LOCKED]
+    silhouette.js        folded-back masks
     write.html           handwriting lab
     write.css            handwriting lab styles
     write.js             handwriting engine  [LOCKED]
