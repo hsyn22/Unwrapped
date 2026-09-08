@@ -88,7 +88,20 @@ window.addEventListener('resize', () => {
     DRAG_RIGHT = window.innerWidth * 0.4;
 });
 
-const OPEN_THRESHOLD = 0.5;
+// ---- release feel ------------------------------------------------------
+// Paper is light. It leaves quickly, settles softly, and it goes where you
+// flicked it. A fixed 0.45s power2 snap that ignored your speed and took the
+// same time whether it had 5% or 90% left to travel is what read as a hinged
+// board rather than a sheet. Drag tracking itself is untouched — this is only
+// what happens after you let go.
+const OPEN_THRESHOLD = 0.5;     // position fallback when you release slowly
+const FLICK_V        = 0.0035;  // progress per ms — above this the flick decides.
+                                // Calibrated against real gesture speeds: an
+                                // unhurried drag reads ~0.0008 and a brisk one
+                                // ~0.0016, so those still leave position in
+                                // charge; a flick reads ~0.006 and up.
+const SNAP_MIN       = 0.16;    // s — an almost-finished fold just settles
+const SNAP_MAX       = 0.60;    // s — a fold with the whole way still to go
 
 let stage = 1;
 let stage1Progress = 0;
@@ -96,6 +109,7 @@ let stage2Progress = 0;
 let isDragging = false;
 let isFullyOpen = false;
 let startX = 0, startY = 0, dragStart = 0;
+let lastP = 0, lastT = 0, flickV = 0;
 let frameQueued = false;
 const proxy = { p: 0 };
 
@@ -136,6 +150,9 @@ function onPointerDown(e) {
     startX = e.clientX;
     startY = e.clientY;
     dragStart = stage === 1 ? stage1Progress : stage2Progress;
+    lastP = dragStart;
+    lastT = e.timeStamp;
+    flickV = 0;
     hint.classList.add('hidden');
 }
 
@@ -146,6 +163,15 @@ function onPointerMove(e) {
     const delta = stage === 1 ? -dy : dx;
     const dist = stage === 1 ? DRAG_UP : DRAG_RIGHT;
     const p = clamp(dragStart + delta / dist, 0, 1);
+
+    // Smoothed so one stuttery sample can't fake a flick.
+    const dt = e.timeStamp - lastT;
+    if (dt > 0) {
+        flickV = flickV * 0.6 + ((p - lastP) / dt) * 0.4;
+        lastP = p;
+        lastT = e.timeStamp;
+    }
+
     if (stage === 1) stage1Progress = p; else stage2Progress = p;
     requestRender();
 }
@@ -155,7 +181,13 @@ function onPointerUp() {
     isDragging = false;
     const current = stage === 1 ? stage1Progress : stage2Progress;
 
-    if (current >= OPEN_THRESHOLD) {
+    // A flick carries it, however far you actually got. Release slowly and
+    // position decides, as before.
+    const wantsOpen = flickV >  FLICK_V ? true
+                    : flickV < -FLICK_V ? false
+                    : current >= OPEN_THRESHOLD;
+
+    if (wantsOpen) {
         snapTo(1, () => {
             if (stage === 1) {
                 stage = 2;
@@ -172,11 +204,16 @@ function onPointerUp() {
 }
 
 function snapTo(target, onComplete) {
-    proxy.p = stage === 1 ? stage1Progress : stage2Progress;
+    const from = stage === 1 ? stage1Progress : stage2Progress;
+    proxy.p = from;
     gsap.to(proxy, {
         p: target,
-        duration: 0.45,
-        ease: 'power2.out',
+        // Time follows the distance left, so a nearly-open flap settles
+        // instead of taking the same beat as one that has to travel.
+        duration: SNAP_MIN + (SNAP_MAX - SNAP_MIN) * Math.abs(target - from),
+        // Softer arrival than power2. Monotone on purpose: any overshoot
+        // would push fold 1 past flat, below the sheet under it.
+        ease: 'power3.out',
         onUpdate: function () {
             if (stage === 1) stage1Progress = proxy.p; else stage2Progress = proxy.p;
             render();
