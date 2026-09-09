@@ -208,7 +208,7 @@ body {
 .hinge-y { transform-origin: left center; }
 
 #fold1 { top: 0; }
-#fold2-br { left: 50%; top: 50%; width: 50%; height: 50%; }
+#fold2-br { top: 50%; height: 50%; }   /* left/width set by script.js */
 
 /* One slice of the bending flap. The chain runs upward from the crease:
    slice 0 sits on the crease, each later slice hinges off the top of the
@@ -224,7 +224,20 @@ body {
 
 .strip > .strip { bottom: 100%; }
 
-.slice-tr-hinge { left: 100%; top: 0; width: 100%; height: 100%; }
+/* One column of the fold-2 flap. The chain runs rightward from the crease:
+   column 0 sits on it, each later column hinges off the right edge of the one
+   before it. Widths and artwork offsets come from script.js. */
+.col {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+}
+
+.col-tr     { left: 100%; }   /* column 0 sits on the slice's right edge */
+.col > .col { left: 100%; }
 
 .face {
     position: absolute;
@@ -246,8 +259,14 @@ body {
    is untouched, so the hinge stays exactly on the seam; the extra row draws
    the same image row the slice below already draws, so the overlap is
    invisible. Without this the open sheet reads as corrugated slats. */
-.strip > .face,
-.slice-tr-hinge > .face { bottom: -1px; }
+.strip > .face { bottom: -1px; }
+
+/* The same overlap on the other axis: a column's faces overhang its RIGHT
+   edge, under the column that hinges off it, so any sub-pixel gap between
+   them is filled. Extending the right edge leaves the box origin alone, so
+   background-position is unaffected and the extra pixels are the ones the
+   next column already draws. */
+.col > .face { bottom: -1px; right: -1px; }
 
 #hint {
     position: absolute;

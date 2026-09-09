@@ -44,8 +44,8 @@
     // three images however many slices there are.
     const backTL = [...fold1.querySelectorAll('.slice-tl-back')];
     const backTR = [...fold1.querySelectorAll('.slice-tr-back')];
-    const backBR = fold2br.querySelector(':scope > .face-back-y');
-    if (!backTL.length || !backTR.length || !backBR) return;
+    const backBR = [...fold2br.querySelectorAll('.slice-br-back')];
+    if (!backTL.length || !backTR.length || !backBR.length) return;
 
     const img = new Image();
     img.onload = () => {
@@ -77,9 +77,7 @@
 
         backTL.forEach(el => paintSlice(el, urlTL));
         backTR.forEach(el => paintSlice(el, urlTR));
-        backBR.style.backgroundImage  = `url(${urlBR})`;   // replaces the gradient
-        backBR.style.backgroundSize   = '100% 100%';
-        backBR.style.backgroundRepeat = 'no-repeat';
+        backBR.forEach(el => paintSlice(el, urlBR));
 
         // The bands move when the paper is refitted, so re-read them on resize.
         // The images themselves never change, so nothing is rebuilt.
@@ -95,11 +93,11 @@
     }
 
     function placeSlices() {
-        [...backTL, ...backTR].forEach(el => {
-            const { by, bw, bh } = el.dataset;
+        [...backTL, ...backTR, ...backBR].forEach(el => {
+            const { bx, by, bw, bh } = el.dataset;
             if (by === undefined) return;
             el.style.backgroundSize     = `${bw}px ${bh}px`;
-            el.style.backgroundPosition = `0px ${-by}px`;
+            el.style.backgroundPosition = `${-bx}px ${-by}px`;
         });
     }
 

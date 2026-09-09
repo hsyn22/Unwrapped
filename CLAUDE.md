@@ -105,14 +105,14 @@ paper-scene
 │   └── strip 0             (rotateX — hinged on the crease)
 │       ├── slice-tl        (face-front, artwork)
 │       ├── slice-tl-back   (paper back)
-│       ├── slice-tr-hinge  (rotateY — nested INSIDE the slice, DIRECT child)
-│       │   ├── slice-tr    (face-front, artwork)
-│       │   └── slice-tr-back
+│       ├── col 0           (rotateY — DIRECT child of the slice, no wrapper)
+│       │   ├── slice-tr / slice-tr-back
+│       │   └── col 1 … BEND_COLS deep, same shape …
 │       └── strip 1         (rotateX — hinged on top of strip 0)
 │           └── … BEND_STRIPS deep, same shape …
-└── fold2-br                (rotateY — sibling, OUTSIDE fold1)
-    ├── face-front → panel-br artwork
-    └── face-back
+└── fold2-br                (col 0 of the bottom-right flap — sibling, OUTSIDE fold1)
+    ├── slice-br / slice-br-back
+    └── col 1 … BEND_COLS deep …
 ```
 
 This gives **TR = fold1 ∘ fold2** and **BR = fold2 only**, the correct physical relationship.
@@ -175,10 +175,25 @@ free, and that is the price of the effect. If it ever needs to be cheaper, the f
 the slices and compute each one's absolute transform instead, so a change to one does not re-composite
 the rest.
 
-**Fold 2 does not bend yet.** Its flap is still one rigid piece. Doing the same for fold 2 means
-slicing TR both ways — it already carries fold 1's horizontal slices, and fold 2 needs vertical ones —
-so TR becomes an N x M grid, and `ink.js` currently puts a canvas on every front face. That is the
-decision to make before starting it.
+**Fold 2 bends the same way, one axis over.** `.col` chains run rightward from the vertical crease,
+`BEND_COLS` (4) deep, with their own spring (`bend2Now`). Column j's transform is identical for every
+slice of TR and for BR, so it is built once and written to all of them — which is also what keeps TR
+and BR moving as one rigid flap. The columns' faces overhang their **right** edge rather than their
+bottom, for the same gap-filling reason, and column edges snap to device pixels for the same
+sub-pixel-phase reason.
+
+**TR is the piece cut both ways**, since it is carried by fold 1 and hinges again for fold 2, so it is
+a `BEND_STRIPS x BEND_COLS` grid — 28 cells. That multiplies the element count and it is the reason
+`BEND_COLS` is small. Measured on a throttled fold-2 drag, cost climbs steeply with columns: 1 column
+16.2ms, 3 → 22.3ms, 5 → 26ms, 7 → 30.5ms. Four sits level with fold 1's seven slices.
+
+**Both folds now cost more than before, and fold 1 costs more than it did alone**, because every slice
+carries a column chain, so changing a slice re-composites a bigger subtree. At 6x CPU throttle both
+folds land around 22-26ms median with 9-15 frames over 32ms out of ~110. Be careful tuning this by
+measurement: run-to-run variance on a throttled CPU is large enough that structurally-cheaper
+configurations sometimes measure worse, so don't chase small differences. If it ever needs to be
+genuinely cheaper, the real fix is the one already noted — stop nesting, compute each piece's absolute
+transform — not shaving a column.
 
 **Why every rotating piece has front AND back faces.** Early versions used only a front face with
 `backface-visibility: hidden`. Two bugs at once: the piece was invisible for its entire back-facing
