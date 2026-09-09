@@ -149,6 +149,22 @@ near 0.47, which is still clean at 7 slices. 0.5 starts to show a step. If more 
 reach for `BEND_STIFF` and `BEND_DAMP` first — lag and recoil buy more than a bigger bow, and they
 cost no banding.
 
+**The bend can only ever bow the flap AWAY from the sheet under it, never into it.** `settleBend`
+floors the spring at zero and kills its velocity there. This is not cosmetic. The crease strip carries
+weight `1 - bend*(1 - 1/BEND_STRIPS)`, which is exactly 1 — the full fold angle — at bend 0. Let the
+bend go negative and that weight goes *above* 1, so the strip is driven past the full angle: past
+closed, and through the sheet it is lying on. That was a real reported bug. Release a part-way fold so
+it springs back and the hinge was measured at **189.3°** on fold 1 and **189.6°** on fold 2, about
+nine degrees into the paper, on every release. It only showed on the way home, because at the open end
+the fold angle is 0 and any bend multiplies away to nothing.
+
+Killing the velocity as well as the position is what stops it bouncing — a sheet coming to rest on the
+one beneath it stops, it does not rebound. The wanted half of the effect is untouched: measured over a
+full drag, the drawn shape still trails its target by up to 0.109 and still overshoots it by 0.092,
+and after the fold completes it still swells to 0.057 before settling at exactly flat. **Do not
+restore a negative lower bound.** Note also that the upper clamp must stay below 1 for the same
+reason in mirror image — above 1, `1 - bend` turns negative and the crease strip rotates backwards.
+
 The spring's frame loop stops once it has settled and the finger is up, so an idle page is not holding
 a loop open. Transforms are only written when the rounded string actually changes — the fold-2 hinges
 never change during a fold-1 drag, and re-assigning a transform on a deep preserve-3d chain
