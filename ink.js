@@ -59,7 +59,7 @@
     // slice of the bending fold-1 flap. script.js stamps each face with its
     // origin in paper coordinates (data-ox / data-oy), so this does not need to
     // know how the flap is cut up — change BEND_STRIPS and this follows.
-    const FACES = '.slice-tl, .slice-tr, #panel-bl, #panel-br';
+    const FACES = '.slice-tl, .slice-tr, .slice-br, #panel-bl';
 
     let quads = [];        // { ctx, canvas, host }
     let paperW = 0;        // full paper width in CSS px — the unit strokes scale by

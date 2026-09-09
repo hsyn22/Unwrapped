@@ -25,6 +25,13 @@ const BEND_STRIPS = 7;     // slices in the fold-1 flap. Each is another level o
                           // 0.26 the bow is gentle enough that 7 is
                           // indistinguishable from 10, and costs 4 frames over
                           // 32ms in a throttled drag where 10 costs 24.
+const BEND_COLS  = 4;     // columns in the fold-2 flap, same idea one axis over.
+                          // TR carries BOTH — fold 1's slices and fold 2's
+                          // columns — so it is a BEND_STRIPS x BEND_COLS grid
+                          // and this number multiplies the element count. Cost
+                          // climbs steeply: on a throttled fold-2 drag, 1 col
+                          // is 16.2ms, 3 is 22.3, 5 is 26, 7 is 30.5. Four sits
+                          // level with fold 1's seven slices.
 const BEND_MAX   = 0.38;  // 0 = rigid plane (the old behaviour), 1 = the flap
                           // curls into a full arc at the middle of the drag.
                           // Past ~0.4 the curl gets tight enough that the
@@ -43,7 +50,6 @@ const LIFT2 = 2;           // px — fold 2 thickness lift, tapers to 0 when ope
 
 const paperContainer = document.getElementById('paper-container');
 const panelBL = document.getElementById('panel-bl');
-const panelBR = document.getElementById('panel-br');
 const fold1 = document.getElementById('fold1');
 const fold2br = document.getElementById('fold2-br');
 
@@ -69,9 +75,35 @@ const strips = [];
 
 const sliceTL     = strips.map(s => s.querySelector(':scope > .slice-tl'));
 const sliceTLBack = strips.map(s => s.querySelector(':scope > .slice-tl-back'));
-const trHinges    = strips.map(s => s.querySelector(':scope > .slice-tr-hinge'));
-const sliceTR     = trHinges.map(h => h.querySelector(':scope > .slice-tr'));
-const sliceTRBack = trHinges.map(h => h.querySelector(':scope > .slice-tr-back'));
+
+// Same trick again, one axis over: each fold-2 flap is a chain of columns
+// hinged to each other, running right from the crease. Clone the seed BEFORE
+// nesting into it, or each pass copies the columns already appended and the
+// chain doubles every time.
+function chainFrom(seed, count) {
+    const proto = seed.cloneNode(true);
+    proto.removeAttribute('id');
+    const chain = [seed];
+    let parent = seed;
+    for (let j = 1; j < count; j++) {
+        const el = proto.cloneNode(true);
+        parent.appendChild(el);
+        parent = el;
+        chain.push(el);
+    }
+    return chain;
+}
+
+// colsTR[k][j] — column j of slice k. TR is the one piece that is cut both
+// ways, because it is carried by fold 1 and hinges again for fold 2.
+const colsTR = strips.map(s => chainFrom(s.querySelector(':scope > .col-tr'), BEND_COLS));
+const colsBR = chainFrom(fold2br, BEND_COLS);
+
+const pick = (list, sel) => list.map(el => el.querySelector(':scope > ' + sel));
+const sliceTR     = colsTR.map(cols => pick(cols, '.slice-tr'));
+const sliceTRBack = colsTR.map(cols => pick(cols, '.slice-tr-back'));
+const sliceBR     = pick(colsBR, '.slice-br');
+const sliceBRBack = pick(colsBR, '.slice-br-back');
 const hint = document.getElementById('hint');
 const experience = document.getElementById('experience');
 const debugPanel = document.getElementById('debug-panel');
@@ -98,7 +130,6 @@ function positionArtwork() {
     fold2br.style.height = `${paperH - hingeY}px`;
 
     setLeaf(panelBL, 0, -hingeY);
-    setLeaf(panelBR, -paperW / 2, -hingeY);
 
     // Each slice shows its own band of the sheet. Slice 0 is the band just
     // above the crease, so the bands run upward from there.
@@ -116,27 +147,51 @@ function positionArtwork() {
         edges.push(snap(hingeY * (1 - k / BEND_STRIPS)));
     }
 
+    // Column edges, measured from the crease across the right half, snapped
+    // for the same sub-pixel-phase reason as the slice edges.
+    const halfW = paperW / 2;
+    const colEdges = [];
+    for (let j = 0; j <= BEND_COLS; j++) colEdges.push(snap(halfW * j / BEND_COLS));
+
     for (let k = 0; k < BEND_STRIPS; k++) {
         const yTop = edges[k + 1];
         const sliceH = edges[k] - edges[k + 1];
         strips[k].style.height = `${sliceH}px`;
         if (k === 0) strips[k].style.bottom = `${hingeY - edges[0]}px`;
 
+        // Paper-space origin of each face is stamped for ink.js; where each
+        // back face reads from its pre-mirrored quadrant image is stamped for
+        // silhouette.js. Mirroring TL vertically maps slice k's band to
+        // hingeY - its top edge.
         setLeaf(sliceTL[k], 0, -yTop);
-        setLeaf(sliceTR[k], -paperW / 2, -yTop);
-
-        // Paper-space origin of each face, for ink.js.
         stampOrigin(sliceTL[k], 0, yTop);
-        stampOrigin(sliceTR[k], paperW / 2, yTop);
+        stampBack(sliceTLBack[k], 0, hingeY - edges[k], halfW, hingeY);
 
-        // Where each back face reads from its pre-mirrored quadrant image,
-        // for silhouette.js. Mirroring TL vertically maps slice k's band to
-        // k * sliceH; mirroring TR horizontally leaves its band where it is.
-        stampBack(sliceTLBack[k], hingeY - edges[k], paperW / 2, hingeY);
-        stampBack(sliceTRBack[k], yTop, paperW / 2, hingeY);
+        for (let j = 0; j < BEND_COLS; j++) {
+            const xLeft = colEdges[j];
+            colsTR[k][j].style.width = `${colEdges[j + 1] - xLeft}px`;
+
+            setLeaf(sliceTR[k][j], -(halfW + xLeft), -yTop);
+            stampOrigin(sliceTR[k][j], halfW + xLeft, yTop);
+            // Mirroring TR horizontally maps column j's band to the far side,
+            // so its back reads from halfW - (the column's RIGHT edge).
+            stampBack(sliceTRBack[k][j], halfW - colEdges[j + 1], yTop, halfW, hingeY);
+        }
     }
+
+    // The bottom-right flap: same columns, one piece tall.
+    const brH = paperH - hingeY;
+    fold2br.style.left = `${halfW}px`;
+    for (let j = 0; j < BEND_COLS; j++) {
+        const xLeft = colEdges[j];
+        colsBR[j].style.width = `${colEdges[j + 1] - xLeft}px`;
+
+        setLeaf(sliceBR[j], -(halfW + xLeft), -hingeY);
+        stampOrigin(sliceBR[j], halfW + xLeft, hingeY);
+        stampBack(sliceBRBack[j], halfW - colEdges[j + 1], 0, halfW, brH);
+    }
+
     stampOrigin(panelBL, 0, hingeY);
-    stampOrigin(panelBR, paperW / 2, hingeY);
 }
 
 function stampOrigin(el, ox, oy) {
@@ -144,7 +199,8 @@ function stampOrigin(el, ox, oy) {
     el.dataset.oy = oy;
 }
 
-function stampBack(el, by, bw, bh) {
+function stampBack(el, bx, by, bw, bh) {
+    el.dataset.bx = bx;
     el.dataset.by = by;
     el.dataset.bw = bw;
     el.dataset.bh = bh;
@@ -215,6 +271,8 @@ const proxy = { p: 0 };
 // deliberately slight.
 let bendNow = 0;
 let bendVel = 0;
+let bend2Now = 0;
+let bend2Vel = 0;
 let springRAF = null;
 let springLast = 0;
 
@@ -224,8 +282,8 @@ let springLast = 0;
 // preserve-3d chain ten levels deep re-composites the whole subtree, so writing
 // only on an actual change is worth the bookkeeping.
 const lastStripT = [];
+const lastColT = [];
 let lastFold1T = '';
-let lastFold2T = '';
 
 function setT(el, value, prev) {
     if (value === prev) return prev;
@@ -251,14 +309,25 @@ function render() {
         lastStripT[k] = setT(strips[k], `rotateX(${deg(rot1 * w)}deg)`, lastStripT[k]);
     }
 
-    // ONE fold-2 transform, computed once, assigned to every right-hand piece.
+    // Fold 2, the same way one axis over. Column j's transform is identical for
+    // every slice of TR and for BR, so it is built once and written to all of
+    // them — which is also what keeps TR and BR moving as one rigid flap.
     const rot2 = -180 * (1 - stage2Progress);
     const lift2 = LIFT2 * (Math.abs(rot2) / 180);
-    const t2 = `translateZ(${deg(lift2)}px) rotateY(${deg(rot2)}deg)`;
-    if (t2 !== lastFold2T) {
-        for (let k = 0; k < BEND_STRIPS; k++) trHinges[k].style.transform = t2;
-        fold2br.style.transform = t2;
-        lastFold2T = t2;
+    const even2 = bend2Now / BEND_COLS;
+
+    for (let j = 0; j < BEND_COLS; j++) {
+        const w = (j === 0 ? 1 - bend2Now : 0) + even2;
+        const rot = deg(rot2 * w);
+        // The thickness lift belongs to the flap as a whole, so it rides on
+        // the column that carries it: the one hinged on the crease.
+        const t = j === 0
+            ? `translateZ(${deg(lift2)}px) rotateY(${rot}deg)`
+            : `rotateY(${rot}deg)`;
+        if (t === lastColT[j]) continue;
+        lastColT[j] = t;
+        for (let k = 0; k < BEND_STRIPS; k++) colsTR[k][j].style.transform = t;
+        colsBR[j].style.transform = t;
     }
 
     if (dbgReadout) {
@@ -273,9 +342,9 @@ function requestRender() {
 
 // Target shape for the current drag position: flat at both ends, bowed in the
 // middle. What actually gets drawn chases this.
-function bendTarget() {
-    return BEND_MAX * 4 * stage1Progress * (1 - stage1Progress);
-}
+function bendTarget()  { return bow(stage1Progress); }
+function bendTarget2() { return bow(stage2Progress); }
+function bow(p) { return BEND_MAX * 4 * p * (1 - p); }
 
 function springTick(now) {
     const dt = Math.min(0.032, Math.max(0.001, (now - springLast) / 1000));
@@ -284,6 +353,11 @@ function springTick(now) {
     const target = bendTarget();
     bendVel += ((target - bendNow) * BEND_STIFF - bendVel * BEND_DAMP) * dt;
     bendNow = clamp(bendNow + bendVel * dt, -0.08, BEND_MAX * 1.6);
+
+    const target2 = bendTarget2();
+    bend2Vel += ((target2 - bend2Now) * BEND_STIFF - bend2Vel * BEND_DAMP) * dt;
+    bend2Now = clamp(bend2Now + bend2Vel * dt, -0.08, BEND_MAX * 1.6);
+
     render();
 
     // Keep running while the finger is down, otherwise stop once it has settled
@@ -291,9 +365,12 @@ function springTick(now) {
     // Threshold sized to the bend, not to zero: 0.0015 of a 0.38 bow is well
     // under a pixel of movement, and a softer spring has a long invisible tail
     // that would otherwise hold the frame loop open for seconds.
-    if (!isDragging && Math.abs(target - bendNow) < 0.0015 && Math.abs(bendVel) < 0.01) {
+    const still = Math.abs(target  - bendNow)  < 0.0015 && Math.abs(bendVel)  < 0.01 &&
+                  Math.abs(target2 - bend2Now) < 0.0015 && Math.abs(bend2Vel) < 0.01;
+    if (!isDragging && still) {
         bendNow = target;
-        bendVel = 0;
+        bend2Now = target2;
+        bendVel = bend2Vel = 0;
         springRAF = null;
         render();
         return;
