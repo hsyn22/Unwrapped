@@ -34,35 +34,42 @@ body {
         /* The warm side. Multi-stop rather than one soft blob, because real
            light falls off fast near the source and slowly after — a single
            stop reads as a painted smudge. */
-        radial-gradient(130% 100% at -14% 42%,
-            rgba(255, 196, 138, 0.16) 0%,
-            rgba(255, 158, 88, 0.085) 22%,
-            rgba(240, 122, 60, 0.03) 45%,
-            transparent 70%),
+        radial-gradient(150% 115% at -40% 34%,
+            rgba(255, 233, 206, 0.15) 0%,
+            rgba(255, 214, 172, 0.085) 24%,
+            rgba(236, 178, 138, 0.032) 48%,
+            transparent 72%),
         /* The cool side it falls into. Warmth only reads as warmth against
-           something colder. */
-        radial-gradient(100% 90% at 114% 72%, rgba(48, 68, 122, 0.22), transparent 60%),
+           something colder, and this now carries most of the colour. */
+        radial-gradient(105% 95% at 116% 74%, rgba(46, 70, 132, 0.26), transparent 62%),
         #06060b;
 }
 
 /* The source itself, off-canvas to the left, breathing slowly. */
+/* The source sits well OFF the screen. It used to be centred at about +10vmax,
+   i.e. inside the frame and behind the paper, which reads as the paper being
+   lit by something in front of it. Now only the outer falloff reaches in, so
+   the light comes from somewhere off to the left, as the paper's own lighting
+   already implies. Centre lands at -110 + 75 = -35vmax. */
 #glow {
     position: fixed;
-    left: -34vmax;
+    left: -110vmax;
     top: 50%;
-    width: 88vmax;
-    height: 88vmax;
-    margin-top: -44vmax;
+    width: 150vmax;
+    height: 150vmax;
+    margin-top: -83vmax;
     border-radius: 50%;
     z-index: 0;
     pointer-events: none;
-    /* Hot core out to a long warm tail. */
+    /* Hot core out to a long tail. Much less orange than it was — a warm
+       near-white reads as light, where saturated amber read as a colour wash
+       competing with the paper's own warmth. */
     background: radial-gradient(closest-side,
-        rgba(255, 228, 190, 0.17) 0%,
-        rgba(255, 186, 118, 0.115) 20%,
-        rgba(255, 148, 78, 0.05) 46%,
-        rgba(250, 120, 58, 0.014) 68%,
-        transparent 82%);
+        rgba(255, 244, 226, 0.20) 0%,
+        rgba(255, 226, 190, 0.14) 22%,
+        rgba(252, 200, 156, 0.062) 48%,
+        rgba(238, 172, 130, 0.018) 70%,
+        transparent 84%);
     will-change: transform, opacity;
     animation: glow-breathe 19s ease-in-out infinite;
 }
@@ -85,10 +92,10 @@ body {
     pointer-events: none;
     background: repeating-linear-gradient(103deg,
         transparent 0 3.4%,
-        rgba(255, 196, 140, 0.042) 4.4% 5.9%,
+        rgba(255, 226, 196, 0.04) 4.4% 5.9%,
         transparent 7% 11.5%);
-    -webkit-mask-image: radial-gradient(58% 52% at 10% 44%, #000 0%, rgba(0,0,0,0.45) 42%, transparent 72%);
-            mask-image: radial-gradient(58% 52% at 10% 44%, #000 0%, rgba(0,0,0,0.45) 42%, transparent 72%);
+    -webkit-mask-image: radial-gradient(62% 56% at 2% 38%, #000 0%, rgba(0,0,0,0.45) 44%, transparent 74%);
+            mask-image: radial-gradient(62% 56% at 2% 38%, #000 0%, rgba(0,0,0,0.45) 44%, transparent 74%);
     will-change: transform;
     animation: ray-drift 46s ease-in-out infinite;
 }
@@ -107,20 +114,28 @@ body {
     inset: -12%;
     z-index: 0;
     pointer-events: none;
+    /* Each of the bright ones is a hard point over a soft halo, which is what
+       makes a star read as shining rather than as a grey dot. */
     background-image:
-        radial-gradient(1.6px 1.6px at 17% 23%, #ffffff9e, transparent),
-        radial-gradient(1.2px 1.2px at 64% 71%, #ffffff7a, transparent),
-        radial-gradient(1.8px 1.8px at 88% 12%, #ffe9d1a8, transparent),
-        radial-gradient(1px 1px   at 41% 88%, #ffffff66, transparent),
-        radial-gradient(1.3px 1.3px at 8% 62%, #ffffff70, transparent),
-        radial-gradient(1px 1px   at 73% 38%, #ffe4c680, transparent),
-        radial-gradient(1.5px 1.5px at 31% 51%, #ffffff5e, transparent),
-        radial-gradient(1px 1px   at 95% 79%, #ffffff55, transparent);
+        radial-gradient(1.7px 1.7px at 17% 23%, #ffffff, transparent),
+        radial-gradient(7px 7px   at 17% 23%, #fff6e64d, transparent),
+        radial-gradient(1.3px 1.3px at 64% 71%, #ffffffdd, transparent),
+        radial-gradient(1.9px 1.9px at 88% 12%, #fff3e2, transparent),
+        radial-gradient(8px 8px   at 88% 12%, #ffe9cc4a, transparent),
+        radial-gradient(1.1px 1.1px at 41% 88%, #ffffffb0, transparent),
+        radial-gradient(1.4px 1.4px at 8% 62%, #ffffffcc, transparent),
+        radial-gradient(1.1px 1.1px at 73% 38%, #ffeeda9e, transparent),
+        radial-gradient(1.6px 1.6px at 31% 51%, #ffffffc4, transparent),
+        radial-gradient(1.1px 1.1px at 95% 79%, #ffffff92, transparent);
     background-repeat: repeat;
-    background-size: 617px 617px, 431px 431px, 293px 293px;
-    -webkit-mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.16) 100%);
-            mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.16) 100%);
-    opacity: 0.62;
+    background-size:
+        617px 617px, 617px 617px,
+        431px 431px,
+        293px 293px, 293px 293px,
+        521px 521px, 379px 379px, 253px 253px, 691px 691px, 337px 337px;
+    -webkit-mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,0.66) 55%, rgba(0,0,0,0.36) 100%);
+            mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,0.66) 55%, rgba(0,0,0,0.36) 100%);
+    opacity: 0.9;
     will-change: transform, opacity;
     animation: star-drift 120s linear infinite, star-breathe 11s ease-in-out infinite;
 }
@@ -131,8 +146,8 @@ body {
 }
 
 @keyframes star-breathe {
-    0%, 100% { opacity: 0.46; }
-    50%      { opacity: 0.68; }
+    0%, 100% { opacity: 0.66; }
+    50%      { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
