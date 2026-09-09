@@ -8,20 +8,31 @@
 html, body {
     height: 100%;
     overflow: hidden;
-    background: #05050a;
+    background: #0d0805;
     overscroll-behavior: none;
 }
+
+/* The desk is in surface.css, shared with the note page. Everything on this
+   page sits above it. */
+#lab { position: relative; z-index: 1; }
 
 body {
     font-family: system-ui, -apple-system, sans-serif;
     color: #f5f5f5;
 }
 
+/* The chrome recedes. The brightest thing on this page has to be the paper,
+   the same way it is on the note page — a row of lit buttons around a lit
+   sheet flattens the whole thing back into a web form. So the title, the
+   status line and the buttons are all dim warm text on the dark desk, and
+   only the one action you are actually here for carries a fill. */
 #title {
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: #f2ece2;
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: lowercase;
+    color: #d8c2a4;
+    opacity: 0.62;
 }
 
 /* An id rule with a display beats [hidden]'s display:none, so say so
@@ -41,9 +52,9 @@ body {
     padding: 9px 11px;
     font: inherit;
     font-size: 0.78rem;
-    color: #d8d2c8;
-    background: #ffffff10;
-    border: 1px solid #ffffff33;
+    color: #e2d3bd;
+    background: #ffe9c70e;
+    border: 1px solid #ffe9c728;
     border-radius: 6px;
     /* A link with a whole note in it is long. Keep it one quiet line rather
        than letting it wrap over half the screen. */
@@ -58,7 +69,7 @@ body {
 }
 
 #share-open {
-    color: #ffffff9c;
+    color: #e6d3b8a8;
     font-size: 0.8rem;
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -67,7 +78,7 @@ body {
 #share-note {
     font-size: 0.72rem;
     line-height: 1.45;
-    color: #ffffff70;
+    color: #e6d3b875;
 }
 
 #lab {
@@ -98,8 +109,10 @@ body {
 }
 
 /* Follows the torn silhouette, not a rectangle. */
+/* Offset down and to the RIGHT, away from the lamp, so it agrees with the
+   note page's shadow instead of contradicting where the light is. */
 #paper {
-    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+    filter: drop-shadow(7px 9px 18px rgba(0, 0, 0, 0.55));
 }
 
 /* Ink sits above the paper; JS masks it to the paper shape. */
@@ -112,7 +125,7 @@ body {
 
 #status {
     font-size: 0.75rem;
-    color: #ffffff88;
+    color: #e2cdb0a8;
     letter-spacing: 0.02em;
     min-height: 1em;
     text-align: center;
@@ -127,24 +140,34 @@ body {
     padding: 0 8px;
 }
 
-#controls button {
-    padding: 10px 16px;
-    font-size: 0.85rem;
+#controls button,
+#share-actions button {
+    padding: 10px 15px;
+    font-size: 0.82rem;
     font-family: inherit;
-    background: #ffffff18;
-    color: #fff;
-    border: 1px solid #ffffff44;
+    letter-spacing: 0.02em;
+    background: transparent;
+    color: #e6d3b8;
+    opacity: 0.66;
+    border: 1px solid transparent;
     border-radius: 6px;
     touch-action: manipulation;
 }
 
-#controls button:active { background: #ffffff33; }
+#controls button:active,
+#share-actions button:active { opacity: 1; background: #ffe9c712; }
 
-#controls button.primary {
-    background: #ffffff2e;
-    border-color: #ffffff88;
+/* Warm, like the lamp, rather than white — a white button on a warm desk is
+   the one thing that still reads as a web page. */
+#controls button.primary,
+#share-actions button.primary {
+    opacity: 1;
+    color: #ffeed6;
+    background: #ffca7c1f;
+    border-color: #ffca7c4d;
 }
 
-#controls button:disabled {
+#controls button:disabled,
+#share-actions button:disabled {
     opacity: 0.35;
 }
