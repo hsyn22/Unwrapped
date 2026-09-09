@@ -409,8 +409,18 @@ length.
 building runs to `points.length - 3` and is completed on stroke end.
 
 **Tuning constants** are named and documented inline so they can be adjusted without reading logic:
-`MIN_W`, `MAX_W`, `V_FAST`, `W_SMOOTH`, `SAMPLE_STEP` for the nib; `REPLAY.speed`,
-`REPLAY.maxPause`, `REPLAY.leadIn` for rhythm.
+`MIN_W`, `MAX_W`, `V_SLOW`, `V_FAST`, `W_SMOOTH`, `SAMPLE_STEP` for the nib; `INK_DARK` /
+`INK_LIGHT` for the ink; `REPLAY.speed`, `REPLAY.maxPause`, `REPLAY.leadIn` for rhythm.
+
+**The nib needs a speed FLOOR as well as a ceiling.** A finger never truly stops mid-stroke, so the
+bottom of the ramp was dead. Measured over a real message, point-to-point writing speeds sat between
+**0.33 and 0.57** of the old single `V_FAST` (0.0022) — the middle third of a ramp that assumed zero
+was reachable. The result was a nib nominally spanning `MIN_W`..`MAX_W` that in practice used 31% of
+its range with **80% of the message inside a 10% band of width**. That, not the compositing, is why
+the ink read as a marker. `V_SLOW` (0.0007) and `V_FAST` (0.0013) are both taken from real writing;
+they take the range used to 70% and the p10-p90 band to 24%. **Re-measure these if the sampling rate
+or the surface size ever changes** — they are speeds in normalized units per millisecond, so they do
+not follow the paper.
 
 **Serialized shape** (don't redesign this format):
 
@@ -474,7 +484,27 @@ those are how this gets tested. Leaving the fully-open state clears the ink and 
 
 **The curve maths in `ink.js` is a deliberate copy of `write.js`'s.** Both must produce identical
 letterforms and `write.js` is locked, so it repeats the constants, the width recurrence and the
-Catmull-Rom sampling rather than reaching into it. **If you tune one, tune both.**
+Catmull-Rom sampling rather than reaching into it. **If you tune one, tune both.** `write.js` is a
+classic script with a big shared top-level scope — a stray `const s` inside `widthFor` collided with
+its own parameter and killed the whole page at parse time, so run `node --check` on it after any edit.
+
+**Ink is a dye, not paint.** `mix-blend-mode: multiply` on the ink canvases lets the paper's grain,
+its ruling and its crease shading show through the strokes, so they belong to the sheet instead of
+sitting on it. Safe on the locked 3D chain: the canvas is a leaf, so the stacking context it creates
+has no hinges inside it to flatten — verified by comparing the TL/TR/BR boxes mid-fold-2 with and
+without it, identical to the pixel. The 1px face bleed does **not** double-darken at slice seams
+either; neighbouring slices blend against their own faces, not each other.
+
+**Multiply alone is almost a no-op, and that is the lesson.** At the old `#20263d` the ink was so
+close to black that multiplying it by anything left it black: measured, the blend moved 2% of pixels
+and shifted the mean ink by 0.4 of 255. A near-black line cannot show paper through it however it is
+composited. So the ink is a real ink colour now — `INK_DARK` / `INK_LIGHT`, a saturated indigo — and
+it varies along the stroke, because a pen lays down more where it slows. The density is derived from
+the width the velocity recurrence already produces rather than from a second velocity pass, so the
+two files stay in step for free and `inkFor` is a pure function of `w`.
+
+Continuity across the creases survives all of this: measured on a stroke crossing each crease, the
+maximum step is **2 levels of 255** with no gap columns.
 
 **The link IS the note.** There is no backend, no database and no account, because the whole message
 fits in the URL. Nothing about a note is stored anywhere: send the link and it works, delete it and it
