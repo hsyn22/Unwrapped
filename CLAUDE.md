@@ -63,7 +63,7 @@ Two systems are finished, tested on-device, and explicitly off-limits.
 
 ### 3a. The folding system — STABLE, DO NOT MODIFY
 
-Files: `index.html`, `style.css`, `script.js`
+Files: `note.html`, `style.css`, `script.js`
 
 Do not change any of the following without an explicit, specific request:
 
@@ -127,7 +127,7 @@ between a hinge and its child hinge, this bug comes back.
 **The fold-1 flap bends; it is not one rigid plane.** A single rotating plane read as a hinged board.
 `#fold1` no longer rotates — it is just the flap's box and carries the thickness lift — and inside it
 sits a chain of `BEND_STRIPS` (10) `.strip` slices, each hinged to the top of the one below, running
-up from the crease. `index.html` declares **one** slice; `script.js` clones it into the chain, so the
+up from the crease. `note.html` declares **one** slice; `script.js` clones it into the chain, so the
 markup stays readable and `BEND_STRIPS` is the only thing to change.
 
 Fold 1's angle is shared out along the chain rather than applied to one plane. The shares always sum
@@ -272,49 +272,34 @@ against real gesture speeds — an unhurried drag reads ~0.0008 and a brisk one 
 still leave `OPEN_THRESHOLD` in charge, while a flick reads ~0.006 and up. The ease stays **monotone**
 (`power3.out`): any overshoot would carry fold 1 past flat and push the flap below the sheet under it.
 
-**The backdrop is a warm room** (`backdrop.js`, plus `#backdrop`, `#bokeh-far`, `#bokeh-near`,
-`#motes`, `#glow`). The paper is lit warmly from low and to the left. A cold background fought that —
-the paper read as a cut-out pasted onto someone else's photograph — and the starry-night version was
-rejected from the phone for exactly that. **The background has to be warm because the paper is.**
+**The note lies on a surface** (`backdrop.js`, plus `#desk`, `#desk-mottle`, `#desk-grain`, `#lamp`).
+A warm surface seen straight down, with a pool of lamp light on it. Four earlier attempts at this —
+a lit room, a starry night, warm bokeh — were all rejected from the phone, and the reason each time
+was the same: they were backgrounds *behind* the note rather than something it was lying *on*.
+**The paper is lit warmly, so the surface must be warm too**; a cold one made it read as a cut-out.
 
-**The lights and dust are drawn into canvases by `backdrop.js`**, not written as CSS gradients. CSS
-manages one or two soft blobs before it starts to look like CSS; this places every light and every
-mote individually, with real variation in size, warmth and focus.
+Two generated layers, because CSS cannot do either convincingly. `mottle` is the slow unevenness of a
+real surface — a dozen very soft, very low-contrast patches, full-screen and non-repeating, since a
+large soft shape gives a repeat away instantly. `grain` is the fine texture, and that one **is** tiled,
+because it is high-frequency enough that the repeat is invisible and a full-screen noise field would
+be pointlessly large. Both are seeded, so the surface is identical every load.
 
-**They are full-screen images, not tiles.** A big soft shape gives a repeat away instantly — one
-recognisable blob appearing twice is worse than no blobs — so each layer is one canvas the size of the
-viewport plus a drift margin, regenerated on resize. Rendered at `SCALE` 1.5, which is
-indistinguishable at this softness and a quarter of the memory. The RNG is seeded, so the arrangement
-is the same every time the page opens.
+**Nothing here drifts.** A desk does not move, and the drifting layers of earlier versions were the
+source of a bug where a layer's own edge slid into frame as a straight line. Only `#lamp` breathes.
 
-**Small bokeh keeps a defined rim; big bokeh must not.** Real bokeh is a flattish disc with a brighter
-edge, and that rim is most of what makes a small one read as a lens. At large radii the same rim stops
-looking like a lens and starts looking like a drawn circle, which was the first thing wrong with this
-layer. So `rim` is 0.6 for the far (small) lights and 0.12 for the near (large) ones, and the falloff
-past the rim is long, because a short one draws a ring.
-
-**One cool note opposite the light.** `#backdrop` carries a plum wash in the far shadow. Warm on warm
-goes muddy; the counterpoint is what stops it.
-
-`#glow` is the source itself, low and well off the screen (centre at -29vmax). Only its falloff
-reaches in. Keep its centre off-screen: when it was at +10vmax the paper appeared lit by something in
-front of it, which was reported from the phone.
-
-**The drift margin must exceed the drift distance.** An earlier version overhung by 14% and drifted
-460-700px, so the layer's own edge slid into frame as a straight line. `PAD` is 110px and the drifts
-are under 60px. The drift also **alternates** rather than looping, so it never has to travel a whole
-period to restart without a jump.
-
-**Everything that moves does so by `transform`/`opacity` only**, so it stays on the compositor. Honour
-`prefers-reduced-motion`, which is already wired. A noise/dither layer was tried against gradient
-banding and measured as doing nothing (longest flat run 12px vs 11px) — Chrome already dithers these
-gradients. Don't re-add it.
+**The note casts a shadow** (`#paper-shadow`). It is a sibling BEHIND `#paper-scene`, **never a filter
+on the folding pieces** — a filter creates a stacking context and would flatten the 3D chain, which is
+the same class of bug as the old `#fold1-front` wrapper. It is laid out once at full-paper size and
+then *scaled* per frame, so following the fold costs a transform rather than a relayout. Its footprint
+is the bottom-left quadrant when closed and the whole sheet when open, anchored at the bottom-left
+corner — the piece that never moves. It offsets down and right, away from the lamp, and is a little
+stronger when the note is folded, because a folded note stands proud of the surface.
 
 **Filters and shadows are deliberately stripped** from the fold system. No brightness dimming, no
 drop-shadow. This was to make raw 3D geometry inspectable without polish masking structural bugs.
 Re-adding shading is Phase 2.
 
-**The debug panel is still in `index.html`, behind `?debug=1`, and should stay for now.** It's the row of
+**The debug panel is still in `note.html`, behind `?debug=1`, and should stay for now.** It's the row of
 buttons ("Fold 1 — 0% 25% 50% 75% 100%", same for Fold 2) that force exact geometry states without a
 live drag introducing another variable. Fold 1 buttons set `stage1Progress = p, stage2Progress = 0`.
 Fold 2 buttons set `stage1Progress = 1, stage2Progress = p`. Both reset `isFullyOpen = false` and kill
@@ -323,13 +308,13 @@ they don't leak into the paper's drag handler.
 
 **It is off in the real experience.** The panel carries an inline `display:none` — an `[hidden]`
 attribute loses to the `#debug-panel` rule in `style.css`, which is why it is inline — and a short
-script in `index.html` reveals it for `?debug=1`. So `index.html` is the recipient's experience and
-`index.html?debug=1` is the test rig. **Delete the markup and that script together in Phase 4.** Do
+script in `note.html` reveals it for `?debug=1`. So `note.html` is the recipient's experience and
+`note.html?debug=1` is the test rig. **Delete the markup and that script together in Phase 4.** Do
 not delete them earlier: this panel is what has caught every real geometry bug so far.
 
-### 3b. The handwriting lab — WORKING, DO NOT REWRITE
+### 3b. The handwriting engine — WORKING, DO NOT REWRITE
 
-Files: `write.html`, `write.css`, `write.js`
+Files: `index.html` (the main page), `write.css`, `write.js`
 
 Verified on phone and desktop: writing, multiple strokes, undo, clear, replay, rotation, data export.
 Replay reproduces strokes in correct order, at correct speed, with correct timing. A representative
@@ -400,37 +385,48 @@ silhouette.
 **Pixel reading requires HTTP.** On `file://` the canvas is tainted and `getImageData` throws. The
 status line reports which path was taken; if it says to serve over http, that's why.
 
-### 3d. Handwriting on the paper — WORKING
+### 3d. Handwriting on the paper, and the link — WORKING
 
-Files: `ink.js` (the folded paper), `handoff.js` (the lab's "Send to paper" button).
+Files: `ink.js` (draws it on the note), `link.js` (packs it into a URL), `create.js` (the write
+page's Create-link button).
 
-**The ink is on the paper, not over it.** Each of the four quadrants gets its own canvas, parented to
-that quadrant's front face, so the ink inherits that piece's 3D transform and rides the folds with
-it. There is no full-page overlay — that was the whole point of Phase 3.
+**The ink is on the paper, not over it.** Every front face gets its own canvas, parented to that
+face, so the ink inherits that piece's 3D transform and rides the folds with it. There is no
+full-page overlay.
 
-**Every canvas draws the whole message**, translated by its own quadrant's origin, and clips what
-falls outside itself. That is what keeps a stroke continuous across a crease instead of stopping at
-it: a letter written over the middle is drawn twice, once by each side, and meets exactly. Measured
-across both creases — no gap columns, 1px maximum step, and that step is tens of px away from the
-crease. Do not "optimise" this into one canvas per stroke or a single shared canvas; the redundancy
-IS the crease fix.
+**Every canvas draws the whole message**, translated by its own face's origin, and clips what falls
+outside itself. That is what keeps a stroke continuous across a crease instead of stopping at it: a
+letter written over the middle is drawn twice, once by each side, and meets exactly. Measured across
+both creases — no gap columns, 1px maximum step, and that step is tens of px away from the crease.
+Do not "optimise" this into a single shared canvas; the redundancy IS the crease fix.
 
 **Ink is on the front faces only**, which carry `backface-visibility: hidden`, so a message can never
 be seen through the back of the paper.
 
-**Replay triggers on the geometry, not on `isFullyOpen`.** `ink.js` polls script.js's
-`stage1Progress` / `stage2Progress` and fires when both pass 0.999. `isFullyOpen` stays false for the
-debug buttons, and the debug buttons are how this gets tested — triggering on the flag would make it
-untestable. Leaving the fully-open state clears the ink and re-arms, so re-opening writes it again.
+**Replay triggers on the geometry, not on `isFullyOpen`.** `ink.js` polls `stage1Progress` /
+`stage2Progress` and fires when both pass 0.999. `isFullyOpen` stays false for the debug buttons, and
+those are how this gets tested. Leaving the fully-open state clears the ink and re-arms.
 
 **The curve maths in `ink.js` is a deliberate copy of `write.js`'s.** Both must produce identical
 letterforms and `write.js` is locked, so it repeats the constants, the width recurrence and the
-Catmull-Rom sampling rather than reaching into it. **If you tune one, tune both.** Widths are not
-serialized, so they are recomputed from velocity with the same recurrence capture used.
+Catmull-Rom sampling rather than reaching into it. **If you tune one, tune both.**
 
-**Message source:** `localStorage` (key `unwrapped:message`, written by the lab's Send button), then
-`message.json` if present. No link format, no network, no backend — that is Phase 4. The "no message
-saved yet" line in `#hint` is a Phase 3 affordance and goes away with the debug panel.
+**The link IS the note.** There is no backend, no database and no account, because the whole message
+fits in the URL. Nothing about a note is stored anywhere: send the link and it works, delete it and it
+is gone. `link.js` packs it by hand —
+
+- points are stored as **deltas**, since consecutive samples of a finger are close in space and time,
+  so dx, dy and dt almost always fit in one varint byte each: about three bytes a point where the
+  JSON spends thirty;
+- coordinates are quantised to **1/4096 of the paper's width**, well under a tenth of a pixel;
+- the payload is deflated when the browser can (a flag byte records whether it was) and base64url'd.
+
+A five-stroke, 129-point note lands at **549 characters** of URL, round-tripping with zero timing error
+and a worst coordinate error of 0.0001. **Any format change MUST bump `VERSION` and keep the old path
+working**, or every link anyone has already sent stops opening.
+
+**Message source, in order:** the link (`#m=…`), then `localStorage`, then `message.json`. The last
+two are for local testing only.
 
 ---
 
@@ -477,9 +473,11 @@ continuous across both creases, and replay fires when the paper reaches fully-op
 normalized-by-width coordinate space is what lets them map on without distortion.
 Deliberately NOT included: any link format, any network, any storage beyond one browser — Phase 4.
 
-**Phase 4 — Creation flow and sharing. NOT STARTED.**
-Creation page, template picker / config system (`config.json` exists but is unwired), shareable link
-generation, backend storage. Remove the debug panel here. `sounds/` exists but is empty and unwired.
+**Phase 4 — Creation flow and sharing. MOSTLY DONE.**
+`index.html` is the main page: write a note, press Create link, copy or share it. `note.html` is what
+that link opens. The message travels inside the URL, so there is **no backend and no storage** — that
+part of the original plan turned out not to be needed at all. Still to do: the template picker and
+`config.json`, which is still unwired; `sounds/`, still empty; and removing the debug panel.
 
 Work one phase, one fold, one gesture, one small fix at a time.
 
@@ -496,17 +494,18 @@ Unwrapped/
             Open.png     (the only image used — sliced into quadrants)
     sounds/              (empty, not wired up)
     config.json          (exists, not wired up — future templates)
-    index.html           folding experience  [LOCKED]
-    style.css            folding styles      [LOCKED]
-    script.js            folding logic       [LOCKED]
-    backdrop.js          the warm backdrop
-    silhouette.js        folded-back masks
-    ink.js               handwriting on the paper
-    message.json         (optional — a message for index.html to load)
-    write.html           handwriting lab
-    write.css            handwriting lab styles
+    index.html           THE MAIN PAGE — write a note, get a link
+    write.css            write-page styles
     write.js             handwriting engine  [LOCKED]
-    handoff.js           lab -> paper hand-off button
+    create.js            the Create-link button
+    link.js              packs/unpacks a message into a URL  (shared)
+    note.html            what a link opens — the folded note  [LOCKED]
+    style.css            note-page styles    [LOCKED]
+    script.js            folding logic       [LOCKED]
+    backdrop.js          the surface it lies on
+    silhouette.js        folded-back faces
+    ink.js               handwriting on the paper
+    message.json         (optional — a local test message for note.html)
 ```
 
 ---
@@ -535,17 +534,17 @@ Because of this:
 over http/https.
 
 **GitHub Pages** is the intended deployment target — Settings → Pages → deploy from the default
-branch, root folder. Every merge then publishes to `https://<user>.github.io/<repo>/`, with the fold
-experience at `/index.html` and the handwriting lab at `/write.html`. Testing becomes "open a URL on
+branch, root folder. Every merge then publishes to `https://<user>.github.io/<repo>/`, with the write
+page at `/` and a note at `/note.html#m=…`. Testing becomes "open a URL on
 the phone," with no file syncing.
 
 **Every local asset is loaded with `?v=N`, and N must be bumped whenever any of them change.**
 Pages serves assets with `cache-control: max-age=600`, so without this a phone can pair a freshly
-fetched `index.html` with a `script.js` from ten minutes ago. That is not a cosmetic glitch: the old
+fetched `note.html` with a `script.js` from ten minutes ago. That is not a cosmetic glitch: the old
 script goes looking for markup the new HTML no longer has, throws before it reaches
 `addEventListener`, and **the paper stops moving entirely** — which looks exactly like a broken
 feature rather than a stale cache. It has already cost one test cycle. Reproduce it, if you ever need
-to, by serving the current `index.html` with the previous `script.js`.
+to, by serving the current `note.html` with the previous `script.js`.
 
 **The repo is public and Pages is live** at `https://hsyn22.github.io/Unwrapped/`, serving `main` from
 the root folder. So a test link only shows new work *after* the PR is merged — check what Pages is

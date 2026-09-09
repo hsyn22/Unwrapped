@@ -23,8 +23,9 @@
 // rather than reaching into it: same constants, same width recurrence, same
 // Catmull-Rom sampling, same replay rhythm. If you tune one, tune both.
 //
-// Message source: localStorage (written by the lab's "Send to paper" button),
-// then message.json. No link format and no network — that is Phase 4.
+// Message source: the LINK first (#m=... , unpacked by link.js), then
+// localStorage, then message.json. The link is the real one — a note lives
+// entirely inside its own URL, so there is no server to ask.
 // ============================================
 
 (function () {
@@ -64,7 +65,8 @@
     let quads = [];        // { ctx, canvas, host }
     let paperW = 0;        // full paper width in CSS px — the unit strokes scale by
     let strokes = null;    // prepared message, or null
-    let noMessage = false; // told the owner once already
+    let noMessage = false; // said something about it once already
+    let badLink = false;   // the link carried a message that would not unpack
 
     // ====================================================================
     // CANVASES — one per quadrant, parented to that quadrant's front face
@@ -295,9 +297,10 @@
             if (strokes) {
                 startReplay();
             } else if (!noMessage && hint) {
-                // Phase 3 only — goes away with the debug panel in Phase 4.
                 noMessage = true;
-                hint.textContent = 'no message saved yet — write one in write.html';
+                hint.textContent = badLink
+                    ? 'this link is damaged — ask for a new one'
+                    : 'this link has no note in it — write one on the main page';
                 hint.classList.remove('hidden');
             }
         } else if (!open && played) {
@@ -312,6 +315,15 @@
     // ====================================================================
 
     function loadMessage() {
+        // The link carries the note. Everything after this is for local testing.
+        const inLink = /[#&]m=([A-Za-z0-9\-_]+)/.exec(location.hash || '');
+        if (inLink && window.UnwrappedLink) {
+            return UnwrappedLink.decode(inLink[1]).catch(() => {
+                badLink = true;
+                return null;
+            });
+        }
+
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) return Promise.resolve(JSON.parse(raw));

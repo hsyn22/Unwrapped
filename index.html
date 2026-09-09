@@ -1,98 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- ?v=N on every local asset. GitHub Pages serves these with
-         cache-control: max-age=600, so without it a phone can pair a fresh
-         index.html with a script.js from ten minutes ago. That mismatch is
-         not a cosmetic glitch: script.js goes looking for markup that no
-         longer exists, throws before it registers the drag handlers, and the
-         paper stops moving entirely. BUMP N whenever any of these files
-         change. -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Unwrapped ❤️</title>
-    <link rel="stylesheet" href="style.css?v=10">
+    <title>Unwrapped — write a note</title>
+    <link rel="stylesheet" href="write.css?v=12">
 </head>
 <body>
 
-    <div id="backdrop"></div>
-    <div id="bokeh-far"></div>
-    <div id="bokeh-near"></div>
-    <div id="motes"></div>
-    <div id="glow"></div>
+    <main id="lab">
 
-    <main id="experience">
+        <h1 id="title">Write a note</h1>
 
-        <div id="paper-container">
-            <div id="paper-scene">
-
-                <div class="leaf" id="panel-bl"></div>
-
-                <!-- One slice of the fold-1 flap. script.js clones this into a
-                     chain of BEND_STRIPS slices, each hinged to the one below,
-                     so the sheet bends instead of swinging as one rigid plane.
-                     #fold1 itself no longer rotates; it is just the flap's box
-                     and carries the thickness lift. -->
-                <div class="hinge hinge-x" id="fold1">
-                    <div class="strip">
-                        <div class="face face-front slice-tl"></div>
-                        <div class="face face-back face-back-x slice-tl-back"></div>
-                        <!-- One column of the fold-2 flap, cloned into a chain the
-                             same way. It stays a DIRECT child of the slice: a
-                             wrapper here would flatten fold 2 into fold 1's plane. -->
-                        <div class="hinge hinge-y col col-tr">
-                            <div class="face face-front slice-tr"></div>
-                            <div class="face face-back face-back-y slice-tr-back"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="hinge hinge-y col col-br" id="fold2-br">
-                    <div class="face face-front slice-br"></div>
-                    <div class="face face-back face-back-y slice-br-back"></div>
-                </div>
-
-            </div>
+        <div id="surface">
+            <canvas id="paper"></canvas>
+            <canvas id="ink"></canvas>
         </div>
 
-        <div id="hint">Swipe up to unfold</div>
+        <div id="status">write with your finger</div>
 
-        <div id="debug-panel" style="display:none">
-            <div class="dbg-row">
-                <span>Fold 1 —</span>
-                <button class="dbg" data-fold="1" data-p="0">0%</button>
-                <button class="dbg" data-fold="1" data-p="0.25">25%</button>
-                <button class="dbg" data-fold="1" data-p="0.5">50%</button>
-                <button class="dbg" data-fold="1" data-p="0.75">75%</button>
-                <button class="dbg" data-fold="1" data-p="1">100%</button>
+        <div id="controls">
+            <button id="btn-undo">Undo</button>
+            <button id="btn-clear">Clear</button>
+            <button id="btn-replay">Replay</button>
+            <button id="btn-link" class="primary">Create link</button>
+            <!-- write.js binds this one and would throw if it were missing;
+                 it is the raw-data escape hatch, not part of the flow. -->
+            <button id="btn-export" hidden>Data</button>
+        </div>
+
+        <div id="share" hidden>
+            <input id="share-url" readonly spellcheck="false">
+            <div id="share-actions">
+                <button id="btn-copy" class="primary">Copy link</button>
+                <button id="btn-share" hidden>Share</button>
+                <a id="share-open" target="_blank" rel="noopener">Open it yourself</a>
             </div>
-            <div class="dbg-row">
-                <span>Fold 2 —</span>
-                <button class="dbg" data-fold="2" data-p="0">0%</button>
-                <button class="dbg" data-fold="2" data-p="0.25">25%</button>
-                <button class="dbg" data-fold="2" data-p="0.5">50%</button>
-                <button class="dbg" data-fold="2" data-p="0.75">75%</button>
-                <button class="dbg" data-fold="2" data-p="1">100%</button>
-            </div>
+            <p id="share-note">The whole note travels inside the link. Nothing is stored on a server.</p>
         </div>
 
     </main>
 
-    <script>
-        // The fold-state panel is off in the real experience. Add ?debug=1 to
-        // the URL to bring it back for testing exact geometry states.
-        // Delete the panel and this script together in Phase 4.
-        // Inline display beats the #debug-panel rule in style.css, which an
-        // [hidden] attribute would lose to.
-        if (/[?&]debug=1(&|$)/.test(location.search)) {
-            document.getElementById('debug-panel').style.display = '';
-        }
-    </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
-    <script src="script.js?v=10"></script>
-    <script src="backdrop.js?v=10"></script>
-    <script src="silhouette.js?v=10"></script>
-    <script src="ink.js?v=10"></script>
+    <script src="write.js?v=12"></script>
+    <script src="link.js?v=12"></script>
+    <script src="create.js?v=12"></script>
 </body>
 </html>

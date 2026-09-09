@@ -1,52 +1,41 @@
 // ============================================
-// UNWRAPPED — The backdrop
+// UNWRAPPED — The surface the note is lying on
 //
-// A warm room rather than a cold sky: soft out-of-focus lights, warm dust, and
-// a warm source low and off to the left. The paper is lit warmly from that
-// direction, and a cold background fought it — the paper looked cut out and
-// pasted onto someone else's photograph.
+// Not a void, and not a sky: a warm surface seen straight down, with a pool of
+// lamp light on it. The note lies on something, which is what gives it a
+// contact shadow and stops it floating.
 //
-// The layers are drawn into canvases here rather than written as CSS
-// gradients. CSS can do one or two soft blobs before it starts to look like
-// CSS; this places every light and every mote individually, with real
-// variation in size, warmth and focus.
+// Two generated layers, because CSS gradients cannot do either convincingly:
 //
-// They are drawn full-screen and NOT tiled. Big soft shapes give a repeat away
-// immediately — one recognisable blob appearing twice is worse than no blobs —
-// so each layer is one canvas the size of the viewport plus a margin for the
-// drift, regenerated when the window changes size.
+//   mottle — the slow unevenness of a real surface. A dozen very soft, very
+//            low-contrast patches, full-screen and non-repeating, because a
+//            large soft shape gives a repeat away instantly.
+//   grain  — the fine texture. This one IS tiled: it is high-frequency enough
+//            that the repeat is invisible, and a full-screen noise field would
+//            be pointlessly large.
 //
-// The RNG is seeded, so the arrangement is the same every time the page opens.
+// Nothing here drifts. A desk does not move, and the earlier drifting layers
+// were the source of a bug where a layer's own edge slid into frame. Only the
+// lamp breathes, in style.css, and only just.
 //
-// Everything that moves does so by transform/opacity only, so it stays on the
-// compositor and the fold never loses a frame to the background.
+// The RNG is seeded, so the surface is the same every time the page opens.
 // ============================================
 
 (function () {
 
-    const SEED = 20260910;
-    const PAD  = 110;          // margin for the drift; must exceed it
-    const SCALE = 1.5;         // render scale — these shapes are soft, so this
-                               // is indistinguishable from full density and a
-                               // quarter of the memory
+    const SEED  = 20260911;
+    const SCALE = 1.4;      // render scale for the soft layer; it is soft, so
+                            // this is indistinguishable and much less memory
 
-    // Out-of-focus lights. Real bokeh is a flattish disc with a brighter rim,
-    // not a soft blob, and that rim is most of what makes it read as a lens.
-    const LIGHTS = {
-        // Small ones keep a defined rim — that is what makes them read as
-        // lights. Big ones barely have one: at that size a visible edge stops
-        // looking like a lens and starts looking like a drawn circle.
-        'bokeh-far':  { count: 18, rMin: 38, rMax: 112, aMin: 0.018, aMax: 0.044, rim: 0.60 },
-        'bokeh-near': { count: 6,  rMin: 92, rMax: 158, aMin: 0.013, aMax: 0.028, rim: 0.12 }
-    };
+    const MOTTLE = { count: 15, rMin: 120, rMax: 380, aMin: 0.012, aMax: 0.05 };
 
-    const WARM = [
-        '255, 196, 132', '255, 214, 158', '255, 176, 108',
-        '250, 158, 96',  '255, 228, 186', '243, 168, 122'
-    ];
+    // Warm highs and deep browns — the unevenness of a surface, not colour.
+    const LIGHT = ['255, 214, 168', '255, 198, 146', '250, 226, 196'];
+    const DARK  = ['46, 24, 12', '32, 17, 9', '58, 32, 16'];
 
-    const MOTES = { count: 190, rMin: 0.5, rMax: 1.9, aMin: 0.14, aMax: 0.7 };
-    const MOTE_COLOURS = ['255, 240, 218', '255, 226, 190', '255, 250, 240', '255, 210, 160'];
+    const GRAIN_TILE = 384;   // drawn at this, shown at GRAIN_SHOWN
+    const GRAIN_SHOWN = 192;
+    const GRAIN_STRENGTH = 0.075;
 
     let seed = SEED;
     function rnd() {
@@ -55,77 +44,69 @@
     }
     const pick = list => list[(rnd() * list.length) | 0];
 
-    function canvasFor(w, h) {
+    function mottle(w, h) {
         const c = document.createElement('canvas');
         c.width  = Math.max(1, Math.round(w * SCALE));
         c.height = Math.max(1, Math.round(h * SCALE));
         const x = c.getContext('2d');
         x.scale(SCALE, SCALE);
-        return { c, x };
-    }
 
-    function lights(w, h, cfg) {
-        const { c, x } = canvasFor(w, h);
-        for (let i = 0; i < cfg.count; i++) {
+        for (let i = 0; i < MOTTLE.count; i++) {
             const cx = rnd() * w;
             const cy = rnd() * h;
-            const r  = cfg.rMin + Math.pow(rnd(), 1.7) * (cfg.rMax - cfg.rMin);
-            const a  = cfg.aMin + rnd() * (cfg.aMax - cfg.aMin);
-            const colour = pick(WARM);
+            const r  = MOTTLE.rMin + Math.pow(rnd(), 1.5) * (MOTTLE.rMax - MOTTLE.rMin);
+            const a  = MOTTLE.aMin + rnd() * (MOTTLE.aMax - MOTTLE.aMin);
+            // Lighter patches near the lamp, darker ones away from it, so the
+            // unevenness agrees with where the light is.
+            const lit = (cx / w) < 0.55 ? rnd() < 0.68 : rnd() < 0.22;
+            const colour = lit ? pick(LIGHT) : pick(DARK);
 
-            // The falloff past the rim is long, so the edge fades instead of
-            // ending. A short falloff draws a ring.
             const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
-            g.addColorStop(0,    `rgba(${colour}, ${a * (1 - cfg.rim * 0.55)})`);
-            g.addColorStop(0.55, `rgba(${colour}, ${a * (1 - cfg.rim * 0.3)})`);
-            g.addColorStop(0.78, `rgba(${colour}, ${a})`);          // the rim
-            g.addColorStop(0.92, `rgba(${colour}, ${a * 0.34})`);
-            g.addColorStop(1,    `rgba(${colour}, 0)`);
+            g.addColorStop(0, `rgba(${colour}, ${a})`);
+            g.addColorStop(0.6, `rgba(${colour}, ${a * 0.4})`);
+            g.addColorStop(1, `rgba(${colour}, 0)`);
             x.fillStyle = g;
             x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
         }
         return c.toDataURL('image/png');
     }
 
-    function motes(w, h) {
-        const { c, x } = canvasFor(w, h);
-        for (let i = 0; i < MOTES.count; i++) {
-            const cx = rnd() * w;
-            const cy = rnd() * h;
-            const r  = MOTES.rMin + Math.pow(rnd(), 2.2) * (MOTES.rMax - MOTES.rMin);
-            // dimmer toward the right, where the light does not reach
-            const fall = 1 - 0.62 * (cx / w);
-            const a = (MOTES.aMin + Math.pow(rnd(), 1.5) * (MOTES.aMax - MOTES.aMin)) * fall;
-            const colour = pick(MOTE_COLOURS);
+    function grain() {
+        const n = GRAIN_TILE;
+        const c = document.createElement('canvas');
+        c.width = c.height = n;
+        const x = c.getContext('2d');
+        const img = x.createImageData(n, n);
+        const d = img.data;
 
-            const g = x.createRadialGradient(cx, cy, 0, cx, cy, r * 4);
-            g.addColorStop(0,    `rgba(${colour}, ${a})`);
-            g.addColorStop(0.22, `rgba(${colour}, ${a * 0.35})`);
-            g.addColorStop(1,    `rgba(${colour}, 0)`);
-            x.fillStyle = g;
-            x.beginPath(); x.arc(cx, cy, r * 4, 0, Math.PI * 2); x.fill();
-
-            x.fillStyle = `rgba(${colour}, ${a})`;
-            x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
+        for (let i = 0; i < n * n; i++) {
+            const v = (rnd() * 2 - 1) * GRAIN_STRENGTH;
+            const o = i * 4;
+            if (v >= 0) { d[o] = 255; d[o + 1] = 238; d[o + 2] = 214; d[o + 3] = Math.round(v * 255); }
+            else        { d[o] = 38;  d[o + 1] = 20;  d[o + 2] = 10;  d[o + 3] = Math.round(-v * 255); }
         }
+        x.putImageData(img, 0, 0);
         return c.toDataURL('image/png');
     }
 
     function paint() {
-        const w = window.innerWidth + PAD * 2;
-        const h = window.innerHeight + PAD * 2;
-
-        seed = SEED;    // same arrangement every time, including after a resize
+        seed = SEED;   // same surface every time, including after a resize
         try {
-            for (const id in LIGHTS) {
-                const el = document.getElementById(id);
-                if (el) el.style.backgroundImage = `url(${lights(w, h, LIGHTS[id])})`;
+            const m = document.getElementById('desk-mottle');
+            if (m) {
+                m.style.backgroundImage = `url(${mottle(window.innerWidth, window.innerHeight)})`;
+                m.style.backgroundSize = '100% 100%';
+                m.style.backgroundRepeat = 'no-repeat';
             }
-            const m = document.getElementById('motes');
-            if (m) m.style.backgroundImage = `url(${motes(w, h)})`;
+            const g = document.getElementById('desk-grain');
+            if (g) {
+                g.style.backgroundImage = `url(${grain()})`;
+                g.style.backgroundSize = `${GRAIN_SHOWN}px ${GRAIN_SHOWN}px`;
+                g.style.backgroundRepeat = 'repeat';
+            }
         } catch (err) {
-            // Canvas unavailable — style.css still paints the warm base, so the
-            // page degrades to a plain warm ground rather than breaking.
+            // Canvas unavailable — style.css still paints the warm surface, so
+            // the page degrades to a plain one rather than breaking.
         }
     }
 
