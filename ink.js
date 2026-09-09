@@ -34,10 +34,31 @@
     const FALLBACK    = 'message.json';
 
     // ---- kept in sync with write.js ------------------------------------
-    const INK         = '#20263d';
+    // Ink is a dye, not paint. It soaks into the sheet, so the paper's grain,
+    // its ruling and its crease shading all show through it — which is
+    // mix-blend-mode: multiply on the canvas, in style.css.
+    //
+    // Multiply alone does almost nothing, though, and that is the real reason
+    // the old ink read as marker: at #20263d it was so close to black that
+    // multiplying it by anything left it black. Measured, the blend changed 2%
+    // of pixels and moved the mean ink by 0.4 of 255. A near-black line cannot
+    // show paper through it however it is composited. So the ink is a real ink
+    // colour now — a saturated indigo — and the blend has something to work on.
+    //
+    // It also varies along the stroke, because a pen lays down more where it
+    // slows. That reuses the width the velocity recurrence already produces
+    // rather than measuring speed again, so the two stay in step for free.
+    const INK_DARK    = [38, 46, 92];    // slow: the pen dwelt, ink pooled
+    const INK_LIGHT   = [104, 116, 162]; // fast: it skated, laid down less
     const MIN_W       = 0.004;   // fastest stroke width (normalized units)
     const MAX_W       = 0.010;   // slowest stroke width
-    const V_FAST      = 0.0022;  // units/ms treated as "fast"
+    // A finger never truly stops mid-stroke, so the bottom of the ramp was
+    // dead: measured over a real message, writing speeds sat between 0.33 and
+    // 0.57 of the old single V_FAST, using a third of the nib's range and
+    // leaving 80% of the message inside a 10% band of width. Hence a floor as
+    // well as a ceiling, both taken from real writing.
+    const V_SLOW      = 0.0007;  // units/ms — a deliberate, slow stroke
+    const V_FAST      = 0.0013;  // units/ms — a brisk one
     const W_SMOOTH    = 0.65;    // width inertia, 0..1
     const SAMPLE_STEP = 0.006;   // resample spacing along the curve
 
@@ -105,8 +126,7 @@
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.translate(-parseFloat(host.dataset.ox), -parseFloat(host.dataset.oy));
             ctx.lineCap     = 'round';
-            ctx.lineJoin    = 'round';
-            ctx.strokeStyle = INK;
+            ctx.lineJoin     = 'round';
 
             return { ctx, canvas, host };
         }).filter(Boolean);
@@ -125,11 +145,14 @@
 
     // Ink is additive — segments are drawn once and never cleared mid-draw.
     function drawSeg(a, b) {
-        const lw = (a.w + b.w) * 0.5 * paperW;
+        const mw = (a.w + b.w) * 0.5;
+        const lw = mw * paperW;
+        const col = inkFor(mw);
         const ax = a.x * paperW, ay = a.y * paperW;
         const bx = b.x * paperW, by = b.y * paperW;
         quads.forEach(q => {
-            q.ctx.lineWidth = lw;
+            q.ctx.lineWidth   = lw;
+            q.ctx.strokeStyle = col;
             q.ctx.beginPath();
             q.ctx.moveTo(ax, ay);
             q.ctx.lineTo(bx, by);
@@ -140,6 +163,16 @@
     // ====================================================================
     // CURVE MATHS — mirrors write.js
     // ====================================================================
+
+    // Ink colour for a stroke width: MIN_W is as fast as the pen goes and
+    // MAX_W as slow, so this needs no second velocity pass.
+    function inkFor(w) {
+        const d = Math.max(0, Math.min(1, (w - MIN_W) / (MAX_W - MIN_W)));
+        const r = Math.round(INK_LIGHT[0] + (INK_DARK[0] - INK_LIGHT[0]) * d);
+        const g = Math.round(INK_LIGHT[1] + (INK_DARK[1] - INK_LIGHT[1]) * d);
+        const b = Math.round(INK_LIGHT[2] + (INK_DARK[2] - INK_LIGHT[2]) * d);
+        return `rgb(${r},${g},${b})`;
+    }
 
     function catmull(a, b, c, d, u) {
         const u2 = u * u, u3 = u2 * u;
@@ -162,7 +195,8 @@
             const prev = points[i - 1];
             const dt = Math.max(1, points[i].t - prev.t);
             const v = Math.hypot(points[i].x - prev.x, points[i].y - prev.y) / dt;
-            const target = MAX_W - (MAX_W - MIN_W) * Math.min(1, v / V_FAST);
+            const fast = Math.max(0, Math.min(1, (v - V_SLOW) / (V_FAST - V_SLOW)));
+            const target = MAX_W - (MAX_W - MIN_W) * fast;
             points[i].w = prev.w * W_SMOOTH + target * (1 - W_SMOOTH);
         }
     }

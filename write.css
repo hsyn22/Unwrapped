@@ -115,8 +115,10 @@ body {
     filter: drop-shadow(7px 9px 18px rgba(0, 0, 0, 0.55));
 }
 
-/* Ink sits above the paper; JS masks it to the paper shape. */
+/* Ink sits above the paper; JS masks it to the paper shape. Multiply so it
+   soaks into the sheet rather than lying on it — same as the note page. */
 #ink {
+    mix-blend-mode: multiply;
     -webkit-mask-size: 100% 100%;
             mask-size: 100% 100%;
     -webkit-mask-repeat: no-repeat;

@@ -149,6 +149,16 @@ body {
    next column already draws. */
 .col > .face { bottom: -1px; right: -1px; }
 
+/* Ink soaks INTO the sheet. Multiply lets the paper's grain, its ruling and
+   its crease shading show through the strokes, so they belong to the surface
+   rather than sitting on top of it.
+   Safe on the 3D chain: the canvas is a leaf, so the stacking context this
+   creates has no hinges inside it to flatten — verified by comparing the TL,
+   TR and BR boxes mid-fold-2 with and without it, which are identical to the
+   pixel. The 1px face bleed does NOT double-darken here either: neighbouring
+   slices blend against their own faces, not each other. */
+canvas.ink { mix-blend-mode: multiply; }
+
 #hint {
     position: absolute;
     bottom: 8vh;

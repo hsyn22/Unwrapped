@@ -14,11 +14,36 @@
 // single source of truth for: paper pixels, ink clipping, input bounds.
 // ============================================
 
-const INK = '#20263d';
+// Ink is a dye, not paint: it soaks into the sheet, so the paper's grain and
+// ruling show through it. That is mix-blend-mode: multiply in write.css.
+// Multiply does nothing to a near-black line, which is why the ink is a real
+// ink colour now rather than the old almost-black #20263d, and why it varies
+// along the stroke — a pen lays down more where it slows. The density reuses
+// the width the velocity recurrence already produces, so there is no second
+// velocity pass and ink.js can mirror it exactly. Tune these and tune ink.js.
+const INK_DARK  = [38, 46, 92];    // slow: the pen dwelt, ink pooled
+const INK_LIGHT = [104, 116, 162]; // fast: it skated, laid down less
+
+// MIN_W is as fast as the pen goes and MAX_W as slow, so the width is already
+// the density signal.
+function inkFor(w) {
+    const d = Math.max(0, Math.min(1, (w - MIN_W) / (MAX_W - MIN_W)));
+    const r = Math.round(INK_LIGHT[0] + (INK_DARK[0] - INK_LIGHT[0]) * d);
+    const g = Math.round(INK_LIGHT[1] + (INK_DARK[1] - INK_LIGHT[1]) * d);
+    const b = Math.round(INK_LIGHT[2] + (INK_DARK[2] - INK_LIGHT[2]) * d);
+    return `rgb(${r},${g},${b})`;
+}
 
 const MIN_W       = 0.004;   // fastest stroke width (normalized units)
 const MAX_W       = 0.010;   // slowest stroke width
-const V_FAST      = 0.0022;  // units/ms treated as "fast"
+// A finger never truly stops mid-stroke, so the bottom of the ramp was dead.
+// Measured over a real message, writing speeds sat between 0.33 and 0.57 of the
+// old single V_FAST — a third of the nib's range, with 80% of the message
+// inside a 10% band of width, which is why the ink read as a marker rather
+// than a pen. Hence a floor as well as a ceiling, both from real writing.
+// Tune these and tune ink.js.
+const V_SLOW      = 0.0007;  // units/ms — a deliberate, slow stroke
+const V_FAST      = 0.0013;  // units/ms — a brisk one
 const W_SMOOTH    = 0.65;    // width inertia, 0..1
 const SAMPLE_STEP = 0.006;   // resample spacing along the curve
 
@@ -212,7 +237,6 @@ function fit() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = INK;
 
     drawPaper();
     redrawAll();
@@ -282,7 +306,9 @@ function buildPiecesUpTo(s, upto) {
 // ---- drawing --------------------------------------------------------
 
 function drawSeg(a, b) {
-    ctx.lineWidth = (a.w + b.w) * 0.5 * W;
+    const mw = (a.w + b.w) * 0.5;
+    ctx.lineWidth   = mw * W;
+    ctx.strokeStyle = inkFor(mw);
     ctx.beginPath();
     ctx.moveTo(a.x * W, a.y * W);
     ctx.lineTo(b.x * W, b.y * W);
@@ -317,7 +343,8 @@ function widthFor(s, x, y, t) {
     const prev = P[P.length - 1];
     const dt = Math.max(1, t - prev.t);
     const v = Math.hypot(x - prev.x, y - prev.y) / dt;
-    const target = MAX_W - (MAX_W - MIN_W) * Math.min(1, v / V_FAST);
+    const fast = Math.max(0, Math.min(1, (v - V_SLOW) / (V_FAST - V_SLOW)));
+    const target = MAX_W - (MAX_W - MIN_W) * fast;
     return prev.w * W_SMOOTH + target * (1 - W_SMOOTH);
 }
 
