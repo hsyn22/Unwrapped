@@ -35,14 +35,17 @@
 
     const scene   = document.getElementById('paper-scene');
     const fold1   = document.getElementById('fold1');
-    const fold2tr = document.getElementById('fold2-tr');
     const fold2br = document.getElementById('fold2-br');
-    if (!scene || !fold1 || !fold2tr || !fold2br) return;
+    if (!scene || !fold1 || !fold2br) return;
 
-    const backTL = fold1.querySelector(':scope > .face-back-x');
-    const backTR = fold2tr.querySelector(':scope > .face-back-y');
+    // The fold-1 flap is a chain of slices, so TL and TR each have one back face
+    // per slice. All the slices of a quadrant share ONE pre-mirrored image and
+    // read their own band out of it by background-position, so this still builds
+    // three images however many slices there are.
+    const backTL = [...fold1.querySelectorAll('.slice-tl-back')];
+    const backTR = [...fold1.querySelectorAll('.slice-tr-back')];
     const backBR = fold2br.querySelector(':scope > .face-back-y');
-    if (!backTL || !backTR || !backBR) return;
+    if (!backTL.length || !backTR.length || !backBR) return;
 
     const img = new Image();
     img.onload = () => {
@@ -67,17 +70,37 @@
         const cy = H * fy;
         const tone = meanPaperTone(img);
 
-        //                  sx  sy  sw       sh       flipX  flipY
-        set(backTL, img, 0,  0,  cx,      cy,      false, true,  tone);
-        set(backTR, img, cx, 0,  W - cx,  cy,      true,  false, tone);
-        set(backBR, img, cx, cy, W - cx,  H - cy,  true,  false, tone);
+        //                                sx  sy  sw       sh       flipX  flipY
+        const urlTL = backFace(img, 0,  0,  cx,      cy,      false, true,  tone);
+        const urlTR = backFace(img, cx, 0,  W - cx,  cy,      true,  false, tone);
+        const urlBR = backFace(img, cx, cy, W - cx,  H - cy,  true,  false, tone);
+
+        backTL.forEach(el => paintSlice(el, urlTL));
+        backTR.forEach(el => paintSlice(el, urlTR));
+        backBR.style.backgroundImage  = `url(${urlBR})`;   // replaces the gradient
+        backBR.style.backgroundSize   = '100% 100%';
+        backBR.style.backgroundRepeat = 'no-repeat';
+
+        // The bands move when the paper is refitted, so re-read them on resize.
+        // The images themselves never change, so nothing is rebuilt.
+        placeSlices();
+        window.addEventListener('resize', placeSlices);
     }
 
-    function set(el, img, sx, sy, sw, sh, flipX, flipY, tone) {
-        const url = backFace(img, sx, sy, sw, sh, flipX, flipY, tone);
-        el.style.backgroundImage  = `url(${url})`;   // replaces the CSS gradient
-        el.style.backgroundSize   = '100% 100%';
+    // A slice shows its own band of the quadrant's mirrored image. script.js
+    // stamps where that band starts (data-by) and how big the whole image is.
+    function paintSlice(el, url) {
+        el.style.backgroundImage  = `url(${url})`;
         el.style.backgroundRepeat = 'no-repeat';
+    }
+
+    function placeSlices() {
+        [...backTL, ...backTR].forEach(el => {
+            const { by, bw, bh } = el.dataset;
+            if (by === undefined) return;
+            el.style.backgroundSize     = `${bw}px ${bh}px`;
+            el.style.backgroundPosition = `0px ${-by}px`;
+        });
     }
 
     // The quadrant, mirrored across its hinge, washed back toward flat tone.

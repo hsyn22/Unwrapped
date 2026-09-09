@@ -30,9 +30,18 @@ body {
     inset: 0;
     z-index: 0;
     background:
-        radial-gradient(78% 68% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.55) 100%),
-        radial-gradient(120% 90% at -12% 44%, rgba(255, 164, 88, 0.17), rgba(255, 138, 68, 0.05) 38%, transparent 68%),
-        radial-gradient(95% 85% at 112% 74%, rgba(44, 62, 112, 0.20), transparent 62%),
+        radial-gradient(80% 70% at 50% 50%, transparent 38%, rgba(0, 0, 0, 0.58) 100%),
+        /* The warm side. Multi-stop rather than one soft blob, because real
+           light falls off fast near the source and slowly after — a single
+           stop reads as a painted smudge. */
+        radial-gradient(130% 100% at -14% 42%,
+            rgba(255, 196, 138, 0.16) 0%,
+            rgba(255, 158, 88, 0.085) 22%,
+            rgba(240, 122, 60, 0.03) 45%,
+            transparent 70%),
+        /* The cool side it falls into. Warmth only reads as warmth against
+           something colder. */
+        radial-gradient(100% 90% at 114% 72%, rgba(48, 68, 122, 0.22), transparent 60%),
         #06060b;
 }
 
@@ -47,10 +56,13 @@ body {
     border-radius: 50%;
     z-index: 0;
     pointer-events: none;
+    /* Hot core out to a long warm tail. */
     background: radial-gradient(closest-side,
-        rgba(255, 178, 104, 0.15),
-        rgba(255, 150, 80, 0.05) 46%,
-        transparent 72%);
+        rgba(255, 228, 190, 0.17) 0%,
+        rgba(255, 186, 118, 0.115) 20%,
+        rgba(255, 148, 78, 0.05) 46%,
+        rgba(250, 120, 58, 0.014) 68%,
+        transparent 82%);
     will-change: transform, opacity;
     animation: glow-breathe 19s ease-in-out infinite;
 }
@@ -60,9 +72,36 @@ body {
     50%      { transform: scale(1.11) translate3d(2.5vmax, -1.5vmax, 0); opacity: 1; }
 }
 
+/* Shafts of light leaning in from the source. Very faint and very slow — this
+   is what stops the background being a static wash. Masked back to the warm
+   side so they read as light through the room rather than stripes on a page. */
+#rays {
+    position: fixed;
+    left: -60%;
+    top: -60%;
+    width: 220%;
+    height: 220%;
+    z-index: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(103deg,
+        transparent 0 3.4%,
+        rgba(255, 196, 140, 0.042) 4.4% 5.9%,
+        transparent 7% 11.5%);
+    -webkit-mask-image: radial-gradient(58% 52% at 10% 44%, #000 0%, rgba(0,0,0,0.45) 42%, transparent 72%);
+            mask-image: radial-gradient(58% 52% at 10% 44%, #000 0%, rgba(0,0,0,0.45) 42%, transparent 72%);
+    will-change: transform;
+    animation: ray-drift 46s ease-in-out infinite;
+}
+
+@keyframes ray-drift {
+    0%, 100% { transform: translate3d(0, 0, 0)        rotate(0deg); }
+    50%      { transform: translate3d(1.4%, -2.2%, 0) rotate(1.3deg); }
+}
+
 /* Dust. Three tile sizes with no common factor, so the repeat never reads as
    a grid the way a single 200px tile did. Oversized and drifting on a
-   transform, because animating background-position would repaint. */
+   transform, because animating background-position would repaint. Masked so
+   motes only really show where the light is — dust in the dark is invisible. */
 #stars {
     position: fixed;
     inset: -12%;
@@ -79,7 +118,9 @@ body {
         radial-gradient(1px 1px   at 95% 79%, #ffffff55, transparent);
     background-repeat: repeat;
     background-size: 617px 617px, 431px 431px, 293px 293px;
-    opacity: 0.6;
+    -webkit-mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.16) 100%);
+            mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.16) 100%);
+    opacity: 0.62;
     will-change: transform, opacity;
     animation: star-drift 120s linear infinite, star-breathe 11s ease-in-out infinite;
 }
@@ -95,7 +136,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    #glow, #stars { animation: none; }
+    #glow, #stars, #rays { animation: none; }
 }
 
 #experience {
@@ -141,10 +182,23 @@ body {
 .hinge-y { transform-origin: left center; }
 
 #fold1 { top: 0; }
-#panel-tl { inset: 0; }
-
-#fold2-tr { left: 100%; top: 0; width: 100%; height: 100%; }
 #fold2-br { left: 50%; top: 50%; width: 50%; height: 50%; }
+
+/* One slice of the bending flap. The chain runs upward from the crease:
+   slice 0 sits on the crease, each later slice hinges off the top of the
+   one before it. Heights and artwork offsets come from script.js. */
+.strip {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    transform-origin: bottom center;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+}
+
+.strip > .strip { bottom: 100%; }
+
+.slice-tr-hinge { left: 100%; top: 0; width: 100%; height: 100%; }
 
 .face {
     position: absolute;
@@ -160,6 +214,14 @@ body {
 
 .face-back-x { transform: rotateX(180deg); }
 .face-back-y { transform: rotateY(180deg); }
+
+/* Faces inside a slice overhang its bottom edge by a pixel, so consecutive
+   slices overlap instead of leaving a hairline between them. The slice box
+   is untouched, so the hinge stays exactly on the seam; the extra row draws
+   the same image row the slice below already draws, so the overlap is
+   invisible. Without this the open sheet reads as corrugated slats. */
+.strip > .face,
+.slice-tr-hinge > .face { bottom: -1px; }
 
 #hint {
     position: absolute;

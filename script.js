@@ -3,13 +3,27 @@
 // TR = fold1 ∘ fold2 (nested inside fold1, direct child — no flattening wrapper)
 // BR = fold2 only (sibling, outside fold1)
 // When fold1 is fully open, R_x(0) = identity, so TR's chain reduces
-// exactly to BR's. One computed fold-2 transform, assigned to both.
+// exactly to BR's. One computed fold-2 transform, assigned to every slice.
+//
+// The fold-1 flap BENDS. It is a chain of BEND_STRIPS slices hinged to each
+// other running up from the crease, and fold 1's rotation is shared out along
+// the chain rather than applied to one rigid plane. The share is concentrated
+// at the crease near either end of the drag — so the sheet is flat when closed
+// and flat when open — and spread evenly mid-drag, which bows it with the free
+// edge leading and the body following. The shares always sum to the full angle,
+// so the flap still lands exactly flat.
 // ============================================
 
 const FOLD1_HINGE = 0.4764; // measured off Open.png, not assumed: the crease's
                             // bright ridge peaks at row 183 and its shadow troughs
                             // at row 180 of 381, so the fold line is 181.5/381.
                             // At 0.5 the hinge sat ~9px low, in flat paper.
+const BEND_STRIPS = 10;    // slices in the fold-1 flap. More is smoother, but
+                          // each is a composited plane, so this is the point
+                          // where the curve stops visibly improving.
+const BEND_MAX   = 0.7;   // 0 = rigid plane (the old behaviour), 1 = the flap
+                          // curls into a full arc at the middle of the drag.
+
 const LIFT1 = 6;           // px — fold 1 thickness lift, tapers to 0 when open
 const LIFT2 = 2;           // px — fold 2 thickness lift, tapers to 0 when open
 // Closed-state depths: TL = LIFT1 (6), TR = LIFT1 - LIFT2 (4),
@@ -18,12 +32,35 @@ const LIFT2 = 2;           // px — fold 2 thickness lift, tapers to 0 when ope
 
 const paperContainer = document.getElementById('paper-container');
 const panelBL = document.getElementById('panel-bl');
-const panelTL = document.getElementById('panel-tl');
-const panelTR = document.getElementById('panel-tr');
 const panelBR = document.getElementById('panel-br');
 const fold1 = document.getElementById('fold1');
-const fold2tr = document.getElementById('fold2-tr');
 const fold2br = document.getElementById('fold2-br');
+
+// Clone index.html's single slice into the chain. Slice 0 sits on the crease;
+// each later slice hinges off the top of the one before it, so a rotation
+// applied to a slice carries everything above it — that is what makes the
+// sheet bend rather than pivot.
+const strips = [];
+(function buildStrips() {
+    const template = fold1.querySelector('.strip');
+    // Snapshot a pristine copy BEFORE nesting anything into the template:
+    // cloning it later would copy the slices already appended inside it and
+    // double the chain every pass.
+    const proto = template.cloneNode(true);
+    let parent = fold1;
+    for (let k = 0; k < BEND_STRIPS; k++) {
+        const strip = k === 0 ? template : proto.cloneNode(true);
+        if (k > 0) parent.appendChild(strip);
+        parent = strip;
+        strips.push(strip);
+    }
+})();
+
+const sliceTL     = strips.map(s => s.querySelector(':scope > .slice-tl'));
+const sliceTLBack = strips.map(s => s.querySelector(':scope > .slice-tl-back'));
+const trHinges    = strips.map(s => s.querySelector(':scope > .slice-tr-hinge'));
+const sliceTR     = trHinges.map(h => h.querySelector(':scope > .slice-tr'));
+const sliceTRBack = trHinges.map(h => h.querySelector(':scope > .slice-tr-back'));
 const hint = document.getElementById('hint');
 const experience = document.getElementById('experience');
 const debugPanel = document.getElementById('debug-panel');
@@ -50,9 +87,56 @@ function positionArtwork() {
     fold2br.style.height = `${paperH - hingeY}px`;
 
     setLeaf(panelBL, 0, -hingeY);
-    setLeaf(panelTL, 0, 0);
     setLeaf(panelBR, -paperW / 2, -hingeY);
-    setLeaf(panelTR, -paperW / 2, 0);
+
+    // Each slice shows its own band of the sheet. Slice 0 is the band just
+    // above the crease, so the bands run upward from there.
+    //
+    // Boundaries are snapped to whole device pixels. Slices sample the same
+    // scaled image at different offsets, and on a fractional boundary each one
+    // resamples with a different sub-pixel phase, which leaves a faint line
+    // along the seam when the sheet is flat. Snapping puts every slice on the
+    // same phase; the snapped boundaries still tile exactly, since each slice's
+    // height is the difference between its own two boundaries.
+    const dpr = window.devicePixelRatio || 1;
+    const snap = v => Math.round(v * dpr) / dpr;
+    const edges = [];
+    for (let k = 0; k <= BEND_STRIPS; k++) {
+        edges.push(snap(hingeY * (1 - k / BEND_STRIPS)));
+    }
+
+    for (let k = 0; k < BEND_STRIPS; k++) {
+        const yTop = edges[k + 1];
+        const sliceH = edges[k] - edges[k + 1];
+        strips[k].style.height = `${sliceH}px`;
+        if (k === 0) strips[k].style.bottom = `${hingeY - edges[0]}px`;
+
+        setLeaf(sliceTL[k], 0, -yTop);
+        setLeaf(sliceTR[k], -paperW / 2, -yTop);
+
+        // Paper-space origin of each face, for ink.js.
+        stampOrigin(sliceTL[k], 0, yTop);
+        stampOrigin(sliceTR[k], paperW / 2, yTop);
+
+        // Where each back face reads from its pre-mirrored quadrant image,
+        // for silhouette.js. Mirroring TL vertically maps slice k's band to
+        // k * sliceH; mirroring TR horizontally leaves its band where it is.
+        stampBack(sliceTLBack[k], hingeY - edges[k], paperW / 2, hingeY);
+        stampBack(sliceTRBack[k], yTop, paperW / 2, hingeY);
+    }
+    stampOrigin(panelBL, 0, hingeY);
+    stampOrigin(panelBR, paperW / 2, hingeY);
+}
+
+function stampOrigin(el, ox, oy) {
+    el.dataset.ox = ox;
+    el.dataset.oy = oy;
+}
+
+function stampBack(el, by, bw, bh) {
+    el.dataset.by = by;
+    el.dataset.bw = bw;
+    el.dataset.bh = bh;
 }
 
 function fitPaperContainer() {
@@ -120,13 +204,24 @@ function render() {
 
     const rot1 = -180 * (1 - stage1Progress);
     const lift1 = LIFT1 * (Math.abs(rot1) / 180);
-    fold1.style.transform = `translateZ(${lift1}px) rotateX(${rot1}deg)`;
+    fold1.style.transform = `translateZ(${lift1}px)`;   // box + lift; the slices turn
 
-    // ONE fold-2 transform, computed once, assigned to both right-hand pieces.
+    // Share fold 1's angle out along the chain. bend is 0 at both ends of the
+    // drag and peaks in the middle, so the flap is rigid when flat and bowed
+    // while it travels. Weights sum to 1, so the tip always ends up at the
+    // full angle however the share is distributed.
+    const bend = BEND_MAX * 4 * stage1Progress * (1 - stage1Progress);
+    const even = bend / BEND_STRIPS;
+    for (let k = 0; k < BEND_STRIPS; k++) {
+        const w = (k === 0 ? 1 - bend : 0) + even;
+        strips[k].style.transform = `rotateX(${rot1 * w}deg)`;
+    }
+
+    // ONE fold-2 transform, computed once, assigned to every right-hand piece.
     const rot2 = -180 * (1 - stage2Progress);
     const lift2 = LIFT2 * (Math.abs(rot2) / 180);
     const t2 = `translateZ(${lift2}px) rotateY(${rot2}deg)`;
-    fold2tr.style.transform = t2;
+    for (let k = 0; k < BEND_STRIPS; k++) trHinges[k].style.transform = t2;
     fold2br.style.transform = t2;
 
     if (dbgReadout) {
