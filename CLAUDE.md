@@ -101,12 +101,15 @@ DOM hierarchy — this nesting was fought for, do not "simplify" it:
 ```
 paper-scene
 ├── panel-bl                (static leaf)
-├── fold1                   (rotateX — the fold1 hinge)
-│   ├── panel-tl            (face-front, artwork)
-│   ├── face-back           (plain paper-back tone)
-│   └── fold2-tr            (rotateY — nested INSIDE fold1, DIRECT child)
-│       ├── face-front → panel-tr artwork
-│       └── face-back
+├── fold1                   (the flap's box + thickness lift; does NOT rotate)
+│   └── strip 0             (rotateX — hinged on the crease)
+│       ├── slice-tl        (face-front, artwork)
+│       ├── slice-tl-back   (paper back)
+│       ├── slice-tr-hinge  (rotateY — nested INSIDE the slice, DIRECT child)
+│       │   ├── slice-tr    (face-front, artwork)
+│       │   └── slice-tr-back
+│       └── strip 1         (rotateX — hinged on top of strip 0)
+│           └── … BEND_STRIPS deep, same shape …
 └── fold2-br                (rotateY — sibling, OUTSIDE fold1)
     ├── face-front → panel-br artwork
     └── face-back
@@ -114,12 +117,46 @@ paper-scene
 
 This gives **TR = fold1 ∘ fold2** and **BR = fold2 only**, the correct physical relationship.
 
-**Why `#fold2-tr` must be a DIRECT child of `#fold1`.** There used to be a `#fold1-front` wrapper
+**Why the fold-2 hinge must be a DIRECT child of its fold-1 slice.** There used to be a `#fold1-front` wrapper
 between them. It had class `.face`, which has no `transform-style: preserve-3d`, so it defaulted to
 `flat` and **flattened TR's rotation into fold1's plane** — a horizontal squash with no perspective —
 while BR rotated in true 3D. Two different projections of the same angle, so their shared edge
 couldn't line up mid-rotation. That was the long-hunted TR/BR gap. If a wrapper is ever reintroduced
 between a hinge and its child hinge, this bug comes back.
+
+**The fold-1 flap bends; it is not one rigid plane.** A single rotating plane read as a hinged board.
+`#fold1` no longer rotates — it is just the flap's box and carries the thickness lift — and inside it
+sits a chain of `BEND_STRIPS` (10) `.strip` slices, each hinged to the top of the one below, running
+up from the crease. `index.html` declares **one** slice; `script.js` clones it into the chain, so the
+markup stays readable and `BEND_STRIPS` is the only thing to change.
+
+Fold 1's angle is shared out along the chain rather than applied to one plane. `bend` is
+`BEND_MAX * 4p(1-p)`: zero at both ends of the drag, peaking in the middle. The shares always sum to
+1, so the tip always reaches the full angle and the flap still lands exactly flat — the distribution
+only decides the shape on the way. Concentrated at the crease = rigid plane; spread evenly = a bow
+with the free edge leading and the body following.
+
+Three things this cost, all of which took a fix — don't undo them:
+
+- **Clone the template BEFORE nesting into it.** Cloning it inside the loop copies the slices already
+  appended and doubles the chain every pass. That silently built 512 slices and dropped the frame
+  rate to 90ms.
+- **Faces overhang their slice's bottom edge by 1px** (`.strip > .face`, `.slice-tr-hinge > .face`).
+  Without it, consecutive slices leave hairlines and the open sheet reads as corrugated slats — worse
+  than the problem being solved. The slice box is untouched, so the hinge stays on the seam, and the
+  extra row draws the same image row the slice below already draws, so the overlap is invisible.
+- **Slice boundaries snap to whole device pixels.** Slices sample the same scaled image at different
+  offsets, and on a fractional boundary each resamples at a different sub-pixel phase, leaving a faint
+  line along the seam when flat. The 1px bleed does *not* fix this — it closes gaps, not phase.
+
+More slices is not better: past ~10 the curve stops improving and every slice is another composited
+plane. At 6x CPU throttle a bending drag runs a 17.9ms median with 2 of 196 frames over 32ms, the
+same as the rigid version.
+
+**Fold 2 does not bend yet.** Its flap is still one rigid piece. Doing the same for fold 2 means
+slicing TR both ways — it already carries fold 1's horizontal slices, and fold 2 needs vertical ones —
+so TR becomes an N x M grid, and `ink.js` currently puts a canvas on every front face. That is the
+decision to make before starting it.
 
 **Why every rotating piece has front AND back faces.** Early versions used only a front face with
 `backface-visibility: hidden`. Two bugs at once: the piece was invisible for its entire back-facing

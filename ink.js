@@ -55,13 +55,11 @@
     const hint  = document.getElementById('hint');
     if (!scene || !fold1) return;
 
-    // col/row are the quadrant's position, used to place its canvas origin.
-    const QUADS = [
-        { id: 'panel-tl', col: 0, row: 0 },
-        { id: 'panel-tr', col: 1, row: 0 },
-        { id: 'panel-bl', col: 0, row: 1 },
-        { id: 'panel-br', col: 1, row: 1 }
-    ];
+    // Every front face gets a canvas: the two static quadrants, plus one per
+    // slice of the bending fold-1 flap. script.js stamps each face with its
+    // origin in paper coordinates (data-ox / data-oy), so this does not need to
+    // know how the flap is cut up — change BEND_STRIPS and this follows.
+    const FACES = '.slice-tl, .slice-tr, #panel-bl, #panel-br';
 
     let quads = [];        // { ctx, canvas, host }
     let paperW = 0;        // full paper width in CSS px — the unit strokes scale by
@@ -74,15 +72,13 @@
 
     function layout() {
         paperW = scene.offsetWidth;
-        const cx = fold1.offsetWidth;    // vertical crease
-        const cy = fold1.offsetHeight;   // horizontal crease
-        if (!paperW || !cx || !cy) return false;
+        if (!paperW || !fold1.offsetHeight) return false;
 
         const dpr = Math.min(window.devicePixelRatio || 1, 3);
+        const hosts = [...scene.querySelectorAll(FACES)];
 
-        quads = QUADS.map(q => {
-            const host = document.getElementById(q.id);
-            if (!host) return null;
+        quads = hosts.map(host => {
+            if (host.dataset.ox === undefined) return null;
 
             let canvas = host.querySelector('canvas.ink');
             if (!canvas) {
@@ -105,7 +101,7 @@
             // continuous across a crease.
             const ctx = canvas.getContext('2d');
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.translate(-q.col * cx, -q.row * cy);
+            ctx.translate(-parseFloat(host.dataset.ox), -parseFloat(host.dataset.oy));
             ctx.lineCap     = 'round';
             ctx.lineJoin    = 'round';
             ctx.strokeStyle = INK;
@@ -113,7 +109,7 @@
             return { ctx, canvas, host };
         }).filter(Boolean);
 
-        return quads.length === QUADS.length;
+        return quads.length > 0;
     }
 
     function clearInk() {

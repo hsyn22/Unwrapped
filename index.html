@@ -19,12 +19,19 @@
 
                 <div class="leaf" id="panel-bl"></div>
 
+                <!-- One slice of the fold-1 flap. script.js clones this into a
+                     chain of BEND_STRIPS slices, each hinged to the one below,
+                     so the sheet bends instead of swinging as one rigid plane.
+                     #fold1 itself no longer rotates; it is just the flap's box
+                     and carries the thickness lift. -->
                 <div class="hinge hinge-x" id="fold1">
-                    <div class="face face-front" id="panel-tl"></div>
-                    <div class="face face-back face-back-x"></div>
-                    <div class="hinge hinge-y" id="fold2-tr">
-                        <div class="face face-front" id="panel-tr"></div>
-                        <div class="face face-back face-back-y"></div>
+                    <div class="strip">
+                        <div class="face face-front slice-tl"></div>
+                        <div class="face face-back face-back-x slice-tl-back"></div>
+                        <div class="hinge hinge-y slice-tr-hinge">
+                            <div class="face face-front slice-tr"></div>
+                            <div class="face face-back face-back-y slice-tr-back"></div>
+                        </div>
                     </div>
                 </div>
 
