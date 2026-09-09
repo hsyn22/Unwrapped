@@ -40,7 +40,8 @@ const BEND_STIFF = 80;    // how hard the sheet springs back to its target shape
                           // Lower = the body trails your finger for longer.
 const BEND_DAMP  = 7.6;   // under-damped on purpose: ~23% overshoot, so the body
                           // swings past and settles. This is the recoil. Lower
-                          // for more of it, higher to calm it down.
+                          // for more of it, higher to calm it down. The
+                          // overshoot only ever runs one way — see settleBend.
 
 const SHADOW_DX = 7;      // px — the shadow falls down and right, away from
 const SHADOW_DY = 9;      // the lamp, which sits up and to the left.
@@ -378,17 +379,38 @@ function bendTarget()  { return bow(stage1Progress); }
 function bendTarget2() { return bow(stage2Progress); }
 function bow(p) { return BEND_MAX * 4 * p * (1 - p); }
 
+// The bend can only ever bow the flap AWAY from the sheet under it, never
+// into it, so the spring is floored at zero and stops dead there.
+//
+// Why: the crease strip carries weight 1 - bend*(1 - 1/BEND_STRIPS). At bend 0
+// that is exactly 1, the full fold angle. Let bend go negative and the weight
+// goes ABOVE 1, so the strip is driven past the full angle — past closed, and
+// straight through the sheet it is lying on. That is what the recoil looked
+// like when a part-way fold was released and sprang back: measured at 189.3
+// degrees on fold 1 and 189.6 on fold 2, about 9 degrees into the paper. It
+// only showed on the way back to the start, because at the open end the fold
+// angle is 0 and any bend multiplies away to nothing.
+//
+// Killing the velocity as well as the position is what stops it bouncing:
+// a real sheet coming to rest on the one beneath it stops, it does not
+// rebound. So the recoil survives on the way out, where you can see it, and
+// there is none on the way home, where it was never physical.
+function settleBend(value, vel) {
+    if (value <= 0) return [0, 0];
+    return [Math.min(value, BEND_MAX * 1.6), vel];
+}
+
 function springTick(now) {
     const dt = Math.min(0.032, Math.max(0.001, (now - springLast) / 1000));
     springLast = now;
 
     const target = bendTarget();
     bendVel += ((target - bendNow) * BEND_STIFF - bendVel * BEND_DAMP) * dt;
-    bendNow = clamp(bendNow + bendVel * dt, -0.08, BEND_MAX * 1.6);
+    [bendNow, bendVel] = settleBend(bendNow + bendVel * dt, bendVel);
 
     const target2 = bendTarget2();
     bend2Vel += ((target2 - bend2Now) * BEND_STIFF - bend2Vel * BEND_DAMP) * dt;
-    bend2Now = clamp(bend2Now + bend2Vel * dt, -0.08, BEND_MAX * 1.6);
+    [bend2Now, bend2Vel] = settleBend(bend2Now + bend2Vel * dt, bend2Vel);
 
     render();
 
