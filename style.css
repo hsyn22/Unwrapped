@@ -17,141 +17,152 @@ body {
     color: #f5f5f5;
 }
 
-/* ---- background -------------------------------------------------------
-   The paper is lit warmly from the left. The room it sits in should be lit
-   the same way, or the paper looks like a cut-out. So: a warm source off to
-   the left, cool depth falling away to the right, and a vignette holding the
-   middle. Everything that moves here moves by transform/opacity only, so it
-   stays on the compositor and never costs the fold a frame.            */
+/* ---- background: a night sky ----------------------------------------
+   The stars themselves are drawn into canvases by sky.js and tiled here —
+   CSS gradients could only manage a handful of dots before the repeat read
+   as a grid. This file owns the sky's colour, the layering, and the motion.
+   Everything that moves does so by transform/opacity only, so it stays on
+   the compositor and the fold never loses a frame to the background.     */
 
-/* Static base. Layers paint first-on-top. */
+/* Depth of the sky. Darkest overhead, a faint lift toward the horizon. */
 #sky {
     position: fixed;
     inset: 0;
     z-index: 0;
     background:
-        radial-gradient(80% 70% at 50% 50%, transparent 38%, rgba(0, 0, 0, 0.58) 100%),
-        /* The warm side. Multi-stop rather than one soft blob, because real
-           light falls off fast near the source and slowly after — a single
-           stop reads as a painted smudge. */
-        radial-gradient(150% 115% at -40% 34%,
-            rgba(255, 233, 206, 0.15) 0%,
-            rgba(255, 214, 172, 0.085) 24%,
-            rgba(236, 178, 138, 0.032) 48%,
-            transparent 72%),
-        /* The cool side it falls into. Warmth only reads as warmth against
-           something colder, and this now carries most of the colour. */
-        radial-gradient(105% 95% at 116% 74%, rgba(46, 70, 132, 0.26), transparent 62%),
-        #06060b;
+        radial-gradient(95% 72% at 50% 44%, transparent 38%, rgba(0, 0, 0, 0.52) 100%),
+        radial-gradient(130% 78% at 46% 112%, rgba(42, 62, 112, 0.40), transparent 64%),
+        linear-gradient(#03040a 0%, #05080f 42%, #070d1b 100%);
 }
 
-/* The source itself, off-canvas to the left, breathing slowly. */
-/* The source sits well OFF the screen. It used to be centred at about +10vmax,
-   i.e. inside the frame and behind the paper, which reads as the paper being
-   lit by something in front of it. Now only the outer falloff reaches in, so
-   the light comes from somewhere off to the left, as the paper's own lighting
-   already implies. Centre lands at -110 + 75 = -35vmax. */
+/* The Milky Way — the dense star tile and a faint haze, masked to a band and
+   rotated across the frame. sky.js supplies both backgrounds. */
+#milkyway {
+    position: fixed;
+    inset: -30%;
+    z-index: 0;
+    pointer-events: none;
+    transform: rotate(-26deg);
+    -webkit-mask-image: radial-gradient(56% 12% at 50% 50%, #000 0%, rgba(0,0,0,0.8) 34%, rgba(0,0,0,0.3) 62%, transparent 86%);
+            mask-image: radial-gradient(56% 12% at 50% 50%, #000 0%, rgba(0,0,0,0.8) 34%, rgba(0,0,0,0.3) 62%, transparent 86%);
+    will-change: opacity;
+    animation: mw-pulse 26s ease-in-out infinite;
+}
+
+/* Two star layers at different depths. They drift by exactly one tile, so the
+   loop has no seam, and they pulse on different cycles — which is what stands
+   in for twinkling across a static image. */
+/* The overhang has to exceed the drift, or the layer's own edge slides into
+   frame as a straight line across the sky. And the drift alternates rather
+   than looping: a linear loop would have to travel a whole tile to restart
+   without a jump, and a whole tile is far more overhang than is affordable. */
+#stars-far,
+#stars {
+    position: fixed;
+    inset: -90px;
+    z-index: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+    animation-direction: alternate;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+}
+
+#stars-far {
+    animation-name: drift-far, pulse-far;
+    animation-duration: 240s, 9.5s;
+}
+
+#stars {
+    animation-name: drift-near, pulse-near;
+    animation-duration: 150s, 6.5s;
+}
+
+@keyframes drift-far  { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-38px, -26px, 0); } }
+@keyframes drift-near { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-62px, -44px, 0); } }
+@keyframes pulse-far  { 0%, 100% { opacity: 0.62; } 50% { opacity: 0.88; } }
+@keyframes pulse-near { 0%, 100% { opacity: 0.78; } 50% { opacity: 1; } }
+@keyframes mw-pulse   { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+
+/* The dozen stars that genuinely twinkle, each on its own timing. A handful of
+   these reads as a living sky far better than trying to animate all of them. */
+#glints {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.glint {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    margin: -1px 0 0 -1px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+        0 0 5px 1px rgba(255, 255, 255, 0.5),
+        0 0 13px 3px rgba(168, 198, 255, 0.2);
+    transform: scale(var(--s, 1));
+    animation-name: twinkle;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+    will-change: opacity;
+}
+
+/* Crossed rays — the thing that makes a bright star read as a star. */
+.glint::before,
+.glint::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.glint::before {
+    width: 14px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+}
+
+.glint::after {
+    width: 1px;
+    height: 14px;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+}
+
+@keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* A distant warmth low on the left, well off the screen. Not a light in the
+   room — just enough that the paper's own warm left-hand lighting has
+   somewhere to have come from. Keep its centre off-screen. */
 #glow {
     position: fixed;
-    left: -110vmax;
-    top: 50%;
+    left: -100vmax;
+    top: 76%;
     width: 150vmax;
     height: 150vmax;
-    margin-top: -83vmax;
+    margin-top: -75vmax;
     border-radius: 50%;
     z-index: 0;
     pointer-events: none;
-    /* Hot core out to a long tail. Much less orange than it was — a warm
-       near-white reads as light, where saturated amber read as a colour wash
-       competing with the paper's own warmth. */
     background: radial-gradient(closest-side,
-        rgba(255, 244, 226, 0.20) 0%,
-        rgba(255, 226, 190, 0.14) 22%,
-        rgba(252, 200, 156, 0.062) 48%,
-        rgba(238, 172, 130, 0.018) 70%,
-        transparent 84%);
+        rgba(255, 228, 194, 0.075) 0%,
+        rgba(250, 202, 158, 0.04) 26%,
+        rgba(226, 170, 130, 0.013) 52%,
+        transparent 76%);
     will-change: transform, opacity;
-    animation: glow-breathe 19s ease-in-out infinite;
+    animation: glow-breathe 23s ease-in-out infinite;
 }
 
 @keyframes glow-breathe {
-    0%, 100% { transform: scale(1)    translate3d(0, 0, 0);          opacity: 0.72; }
-    50%      { transform: scale(1.11) translate3d(2.5vmax, -1.5vmax, 0); opacity: 1; }
-}
-
-/* Shafts of light leaning in from the source. Very faint and very slow — this
-   is what stops the background being a static wash. Masked back to the warm
-   side so they read as light through the room rather than stripes on a page. */
-#rays {
-    position: fixed;
-    left: -60%;
-    top: -60%;
-    width: 220%;
-    height: 220%;
-    z-index: 0;
-    pointer-events: none;
-    background: repeating-linear-gradient(103deg,
-        transparent 0 3.4%,
-        rgba(255, 226, 196, 0.04) 4.4% 5.9%,
-        transparent 7% 11.5%);
-    -webkit-mask-image: radial-gradient(62% 56% at 2% 38%, #000 0%, rgba(0,0,0,0.45) 44%, transparent 74%);
-            mask-image: radial-gradient(62% 56% at 2% 38%, #000 0%, rgba(0,0,0,0.45) 44%, transparent 74%);
-    will-change: transform;
-    animation: ray-drift 46s ease-in-out infinite;
-}
-
-@keyframes ray-drift {
-    0%, 100% { transform: translate3d(0, 0, 0)        rotate(0deg); }
-    50%      { transform: translate3d(1.4%, -2.2%, 0) rotate(1.3deg); }
-}
-
-/* Dust. Three tile sizes with no common factor, so the repeat never reads as
-   a grid the way a single 200px tile did. Oversized and drifting on a
-   transform, because animating background-position would repaint. Masked so
-   motes only really show where the light is — dust in the dark is invisible. */
-#stars {
-    position: fixed;
-    inset: -12%;
-    z-index: 0;
-    pointer-events: none;
-    /* Each of the bright ones is a hard point over a soft halo, which is what
-       makes a star read as shining rather than as a grey dot. */
-    background-image:
-        radial-gradient(1.7px 1.7px at 17% 23%, #ffffff, transparent),
-        radial-gradient(7px 7px   at 17% 23%, #fff6e64d, transparent),
-        radial-gradient(1.3px 1.3px at 64% 71%, #ffffffdd, transparent),
-        radial-gradient(1.9px 1.9px at 88% 12%, #fff3e2, transparent),
-        radial-gradient(8px 8px   at 88% 12%, #ffe9cc4a, transparent),
-        radial-gradient(1.1px 1.1px at 41% 88%, #ffffffb0, transparent),
-        radial-gradient(1.4px 1.4px at 8% 62%, #ffffffcc, transparent),
-        radial-gradient(1.1px 1.1px at 73% 38%, #ffeeda9e, transparent),
-        radial-gradient(1.6px 1.6px at 31% 51%, #ffffffc4, transparent),
-        radial-gradient(1.1px 1.1px at 95% 79%, #ffffff92, transparent);
-    background-repeat: repeat;
-    background-size:
-        617px 617px, 617px 617px,
-        431px 431px,
-        293px 293px, 293px 293px,
-        521px 521px, 379px 379px, 253px 253px, 691px 691px, 337px 337px;
-    -webkit-mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,0.66) 55%, rgba(0,0,0,0.36) 100%);
-            mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,0.66) 55%, rgba(0,0,0,0.36) 100%);
-    opacity: 0.9;
-    will-change: transform, opacity;
-    animation: star-drift 120s linear infinite, star-breathe 11s ease-in-out infinite;
-}
-
-@keyframes star-drift {
-    from { transform: translate3d(0, 0, 0); }
-    to   { transform: translate3d(-293px, -180px, 0); }
-}
-
-@keyframes star-breathe {
-    0%, 100% { opacity: 0.66; }
-    50%      { opacity: 1; }
+    0%, 100% { transform: scale(1)    translate3d(0, 0, 0);           opacity: 0.7; }
+    50%      { transform: scale(1.08) translate3d(1.6vmax, -1vmax, 0); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    #glow, #stars, #rays { animation: none; }
+    #glow, #stars, #stars-far, #milkyway, .glint { animation: none; }
 }
 
 #experience {

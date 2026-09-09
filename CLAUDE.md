@@ -137,14 +137,17 @@ evenly = a bow with the free edge leading and the body following.
 
 **The bend is sprung, and that is the whole effect.** The target shape is `BEND_MAX * 4p(1-p)` — zero
 at both ends of the drag, peaking in the middle — but what gets drawn chases that target through a
-spring (`BEND_STIFF` 120, `BEND_DAMP` 11, ~16% overshoot). So the edge you are holding tracks your
+spring (`BEND_STIFF` 80, `BEND_DAMP` 7.6, ~23% overshoot). So the edge you are holding tracks your
 finger exactly, while the *shape* between the crease and that edge lags and catches up, and overshoots
-slightly when you stop. Measured on a real drag: the shape trails its target by up to 0.12, recoils
-0.024 past flat after the fold completes, and settles in 383ms at exactly flat.
+when you stop. Measured on a real drag: the shape trails its target by up to 0.21, recoils 0.065 past
+flat after the fold completes, and settles in ~820ms at exactly flat.
 
-**`BEND_MAX` is small on purpose (0.26).** At 0.7 the curl was tight enough that the slices read as
-stacked slabs — banded, not bent, which is exactly what was reported from the phone. The bow is
-supposed to be barely perceptible; the *motion* is what sells it.
+**`BEND_MAX` is capped by banding, not by taste (0.38).** At 0.7 the curl was tight enough that the
+slices read as stacked slabs — banded, not bent, which is what was reported from the phone. Judge the
+ceiling at the spring's *peak*, not at `BEND_MAX`: the overshoot carries it ~23% higher, so 0.38 peaks
+near 0.47, which is still clean at 7 slices. 0.5 starts to show a step. If more movement is wanted,
+reach for `BEND_STIFF` and `BEND_DAMP` first — lag and recoil buy more than a bigger bow, and they
+cost no banding.
 
 The spring's frame loop stops once it has settled and the finger is up, so an idle page is not holding
 a loop open. Transforms are only written when the rounded string actually changes — the fold-2 hinges
@@ -254,28 +257,36 @@ against real gesture speeds — an unhurried drag reads ~0.0008 and a brisk one 
 still leave `OPEN_THRESHOLD` in charge, while a flick reads ~0.006 and up. The ease stays **monotone**
 (`power3.out`): any overshoot would carry fold 1 past flat and push the flap below the sheet under it.
 
-**The background is a lit room, not a starfield** (`#sky`, `#glow`, `#rays`, `#stars` in
-`index.html` / `style.css`). The paper is lit warmly from the left, so the space around it is too, or
-the paper reads as a cut-out pasted on black. `#sky` is the static base: vignette, the warm side, and
-the cool side it falls into. `#glow` is the source, breathing over 19s. `#rays` is faint shafts
-leaning in from it, drifting over 46s. `#stars` is dust on three tile sizes with no common factor —
-the old single 200px tile read as a visible grid — drifting over 120s.
+**The background is a starry night** (`sky.js`, plus `#sky`, `#milkyway`, `#stars-far`, `#stars`,
+`#glints`, `#glow`). Earlier versions were a lit room with a warm glow; that was rejected from the
+phone twice — first for the orange, then outright.
 
-Four things make the light read as light rather than a painted smudge, and all four were needed:
-**multi-stop falloff** (a hot near-white core, fast decay, long tail — one soft stop looks fake),
-**a cool complement** on the far side, because warmth only reads as warmth against something colder,
-**masking the dust and the shafts back toward the source**, since dust in the dark is invisible and
-unmasked shafts read as stripes on a page, and **the source's centre being off the screen entirely**.
+**The stars are drawn into canvases by `sky.js`, not written as CSS gradients.** CSS could manage a
+handful of dots before the repeat read as a grid; this puts hundreds down with real variation in size,
+brightness and colour. Three seamless tiles — `far` (many, small, dim), `near` (fewer, brighter, with
+halos), `dense` (very fine, masked to the Milky Way band). Seamless means a star near an edge is drawn
+again wrapped round the other side. The RNG is **seeded**, so the sky is identical every load; a sky
+that reshuffles on reload feels like a screensaver, not a place.
 
-That last one matters and was reported from the phone: `#glow` used to be centred at about +10vmax,
-i.e. inside the frame and behind the paper, so the paper appeared to be lit by something sitting in
-front of it. Its centre is now at -35vmax and only the outer falloff reaches in. Keep it off-screen.
+**Twinkling is faked in two layers.** The tiles are static images, so stars inside them cannot twinkle
+individually; instead each layer pulses on its own slow cycle, out of phase, so different parts of the
+sky brighten at different moments. On top of that sit twelve real `.glint` elements with crossed rays
+and their own timings. A handful of genuinely twinkling stars does far more than trying to animate all
+of them, and the crossed rays are what make a bright dot read as a star.
 
-The warm side is also deliberately **not orange**. Saturated amber read as a colour wash competing
-with the paper's own warmth; a warm near-white reads as light, and the cool side carries most of the
-colour instead. Stars are a hard bright point over a soft halo — a dot on its own reads as grey
-speckle, not as something shining. **Everything that moves does so by `transform`/`opacity` only**, so it stays on the
-compositor: at 6x CPU throttle a fold drag runs a 16.6ms median with zero frames over 32ms. Honour
+**The drift overhang must exceed the drift distance.** The star layers used to overhang by 14% and
+drift 460-700px, so the layer's own edge slid into frame as a straight line across the sky. They now
+overhang 90px and drift under 65px. The drift also **alternates** rather than looping: a linear loop
+would have to travel a whole tile to restart without a jump, and a whole tile is far more overhang
+than is affordable in layer memory.
+
+`#glow` survives only as a faint distant warmth low on the left, with its centre well off-screen
+(-25vmax). It is not a light in the room — it is just enough that the paper's own warm left-hand
+lighting has somewhere to have come from. Keep its centre off-screen; when it was at +10vmax the paper
+appeared lit by something in front of it, which was reported from the phone.
+
+**Everything that moves does so by `transform`/`opacity` only**, so it stays on the compositor: at 6x
+CPU throttle a fold drag runs an 18ms median with 3 of 196 frames over 32ms. Honour
 `prefers-reduced-motion`, which is already wired. A noise/dither layer was tried against gradient
 banding and measured as doing nothing (longest flat run 12px vs 11px) — Chrome already dithers these
 gradients. Don't re-add it.
@@ -469,6 +480,7 @@ Unwrapped/
     index.html           folding experience  [LOCKED]
     style.css            folding styles      [LOCKED]
     script.js            folding logic       [LOCKED]
+    sky.js               the night sky
     silhouette.js        folded-back masks
     ink.js               handwriting on the paper
     message.json         (optional — a message for index.html to load)

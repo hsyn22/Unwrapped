@@ -25,14 +25,15 @@ const BEND_STRIPS = 7;     // slices in the fold-1 flap. Each is another level o
                           // 0.26 the bow is gentle enough that 7 is
                           // indistinguishable from 10, and costs 4 frames over
                           // 32ms in a throttled drag where 10 costs 24.
-const BEND_MAX   = 0.26;  // 0 = rigid plane (the old behaviour), 1 = the flap
+const BEND_MAX   = 0.38;  // 0 = rigid plane (the old behaviour), 1 = the flap
                           // curls into a full arc at the middle of the drag.
                           // Past ~0.4 the curl gets tight enough that the
                           // slices read as stacked slabs — banded, not bent.
-const BEND_STIFF = 120;   // how hard the sheet springs back to its target shape
-const BEND_DAMP  = 11;    // under-damped on purpose: ~16% overshoot, so the
-                          // body overshoots a little and settles. This is the
-                          // recoil, and it should stay barely noticeable.
+const BEND_STIFF = 80;    // how hard the sheet springs back to its target shape.
+                          // Lower = the body trails your finger for longer.
+const BEND_DAMP  = 7.6;   // under-damped on purpose: ~23% overshoot, so the body
+                          // swings past and settles. This is the recoil. Lower
+                          // for more of it, higher to calm it down.
 
 const LIFT1 = 6;           // px — fold 1 thickness lift, tapers to 0 when open
 const LIFT2 = 2;           // px — fold 2 thickness lift, tapers to 0 when open
@@ -287,7 +288,10 @@ function springTick(now) {
 
     // Keep running while the finger is down, otherwise stop once it has settled
     // so an idle page is not holding a frame loop open.
-    if (!isDragging && Math.abs(target - bendNow) < 0.0006 && Math.abs(bendVel) < 0.004) {
+    // Threshold sized to the bend, not to zero: 0.0015 of a 0.38 bow is well
+    // under a pixel of movement, and a softer spring has a long invisible tail
+    // that would otherwise hold the frame loop open for seconds.
+    if (!isDragging && Math.abs(target - bendNow) < 0.0015 && Math.abs(bendVel) < 0.01) {
         bendNow = target;
         bendVel = 0;
         springRAF = null;
