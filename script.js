@@ -18,11 +18,21 @@ const FOLD1_HINGE = 0.4764; // measured off Open.png, not assumed: the crease's
                             // bright ridge peaks at row 183 and its shadow troughs
                             // at row 180 of 381, so the fold line is 181.5/381.
                             // At 0.5 the hinge sat ~9px low, in flat paper.
-const BEND_STRIPS = 10;    // slices in the fold-1 flap. More is smoother, but
-                          // each is a composited plane, so this is the point
-                          // where the curve stops visibly improving.
-const BEND_MAX   = 0.7;   // 0 = rigid plane (the old behaviour), 1 = the flap
+const BEND_STRIPS = 7;     // slices in the fold-1 flap. Each is another level of
+                          // a nested preserve-3d chain, and the whole chain
+                          // re-composites whenever any level changes — which the
+                          // bend spring makes happen every frame. At BEND_MAX
+                          // 0.26 the bow is gentle enough that 7 is
+                          // indistinguishable from 10, and costs 4 frames over
+                          // 32ms in a throttled drag where 10 costs 24.
+const BEND_MAX   = 0.26;  // 0 = rigid plane (the old behaviour), 1 = the flap
                           // curls into a full arc at the middle of the drag.
+                          // Past ~0.4 the curl gets tight enough that the
+                          // slices read as stacked slabs — banded, not bent.
+const BEND_STIFF = 120;   // how hard the sheet springs back to its target shape
+const BEND_DAMP  = 11;    // under-damped on purpose: ~16% overshoot, so the
+                          // body overshoots a little and settles. This is the
+                          // recoil, and it should stay barely noticeable.
 
 const LIFT1 = 6;           // px — fold 1 thickness lift, tapers to 0 when open
 const LIFT2 = 2;           // px — fold 2 thickness lift, tapers to 0 when open
@@ -194,35 +204,61 @@ let isDragging = false;
 let isFullyOpen = false;
 let startX = 0, startY = 0, dragStart = 0;
 let lastP = 0, lastT = 0, flickV = 0;
-let frameQueued = false;
 const proxy = { p: 0 };
+
+// The bend is sprung rather than read straight off the drag. The edge you are
+// holding still tracks your finger exactly — the slice shares always sum to 1,
+// so the tip is always at the full angle — but the SHAPE between the crease and
+// that edge lags behind and catches up. Stop moving and it overshoots a little,
+// then settles. That lag and settle is the whole effect; the bow itself is
+// deliberately slight.
+let bendNow = 0;
+let bendVel = 0;
+let springRAF = null;
+let springLast = 0;
+
+// Last transform written to each element. The spring runs every frame, but the
+// values it produces often round to the same string — and the fold-2 hinges do
+// not change at all while fold 1 is being dragged. Assigning a transform on a
+// preserve-3d chain ten levels deep re-composites the whole subtree, so writing
+// only on an actual change is worth the bookkeeping.
+const lastStripT = [];
+let lastFold1T = '';
+let lastFold2T = '';
+
+function setT(el, value, prev) {
+    if (value === prev) return prev;
+    el.style.transform = value;
+    return value;
+}
+
+const deg = v => (Math.round(v * 1000) / 1000);
 
 function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
 
 function render() {
-    frameQueued = false;
-
     const rot1 = -180 * (1 - stage1Progress);
     const lift1 = LIFT1 * (Math.abs(rot1) / 180);
-    fold1.style.transform = `translateZ(${lift1}px)`;   // box + lift; the slices turn
+    lastFold1T = setT(fold1, `translateZ(${deg(lift1)}px)`, lastFold1T);
 
-    // Share fold 1's angle out along the chain. bend is 0 at both ends of the
-    // drag and peaks in the middle, so the flap is rigid when flat and bowed
-    // while it travels. Weights sum to 1, so the tip always ends up at the
-    // full angle however the share is distributed.
-    const bend = BEND_MAX * 4 * stage1Progress * (1 - stage1Progress);
+    // Share fold 1's angle out along the chain. Weights sum to 1, so the tip
+    // always ends up at the full angle however the share is distributed.
+    const bend = bendNow;
     const even = bend / BEND_STRIPS;
     for (let k = 0; k < BEND_STRIPS; k++) {
         const w = (k === 0 ? 1 - bend : 0) + even;
-        strips[k].style.transform = `rotateX(${rot1 * w}deg)`;
+        lastStripT[k] = setT(strips[k], `rotateX(${deg(rot1 * w)}deg)`, lastStripT[k]);
     }
 
     // ONE fold-2 transform, computed once, assigned to every right-hand piece.
     const rot2 = -180 * (1 - stage2Progress);
     const lift2 = LIFT2 * (Math.abs(rot2) / 180);
-    const t2 = `translateZ(${lift2}px) rotateY(${rot2}deg)`;
-    for (let k = 0; k < BEND_STRIPS; k++) trHinges[k].style.transform = t2;
-    fold2br.style.transform = t2;
+    const t2 = `translateZ(${deg(lift2)}px) rotateY(${deg(rot2)}deg)`;
+    if (t2 !== lastFold2T) {
+        for (let k = 0; k < BEND_STRIPS; k++) trHinges[k].style.transform = t2;
+        fold2br.style.transform = t2;
+        lastFold2T = t2;
+    }
 
     if (dbgReadout) {
         dbgReadout.textContent =
@@ -231,10 +267,40 @@ function render() {
 }
 
 function requestRender() {
-    if (!frameQueued) {
-        frameQueued = true;
-        requestAnimationFrame(render);
+    startSpring();
+}
+
+// Target shape for the current drag position: flat at both ends, bowed in the
+// middle. What actually gets drawn chases this.
+function bendTarget() {
+    return BEND_MAX * 4 * stage1Progress * (1 - stage1Progress);
+}
+
+function springTick(now) {
+    const dt = Math.min(0.032, Math.max(0.001, (now - springLast) / 1000));
+    springLast = now;
+
+    const target = bendTarget();
+    bendVel += ((target - bendNow) * BEND_STIFF - bendVel * BEND_DAMP) * dt;
+    bendNow = clamp(bendNow + bendVel * dt, -0.08, BEND_MAX * 1.6);
+    render();
+
+    // Keep running while the finger is down, otherwise stop once it has settled
+    // so an idle page is not holding a frame loop open.
+    if (!isDragging && Math.abs(target - bendNow) < 0.0006 && Math.abs(bendVel) < 0.004) {
+        bendNow = target;
+        bendVel = 0;
+        springRAF = null;
+        render();
+        return;
     }
+    springRAF = requestAnimationFrame(springTick);
+}
+
+function startSpring() {
+    if (springRAF !== null) return;
+    springLast = performance.now();
+    springRAF = requestAnimationFrame(springTick);
 }
 
 function onPointerDown(e) {
@@ -311,6 +377,7 @@ function snapTo(target, onComplete) {
         ease: 'power3.out',
         onUpdate: function () {
             if (stage === 1) stage1Progress = proxy.p; else stage2Progress = proxy.p;
+            startSpring();   // keep the bend chasing while the fold tweens
             render();
         },
         onComplete
@@ -350,6 +417,7 @@ document.querySelectorAll('.dbg').forEach(btn => {
         }
 
         render();
+        startSpring();
     });
 });
 
