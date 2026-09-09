@@ -130,11 +130,26 @@ sits a chain of `BEND_STRIPS` (10) `.strip` slices, each hinged to the top of th
 up from the crease. `index.html` declares **one** slice; `script.js` clones it into the chain, so the
 markup stays readable and `BEND_STRIPS` is the only thing to change.
 
-Fold 1's angle is shared out along the chain rather than applied to one plane. `bend` is
-`BEND_MAX * 4p(1-p)`: zero at both ends of the drag, peaking in the middle. The shares always sum to
-1, so the tip always reaches the full angle and the flap still lands exactly flat — the distribution
-only decides the shape on the way. Concentrated at the crease = rigid plane; spread evenly = a bow
-with the free edge leading and the body following.
+Fold 1's angle is shared out along the chain rather than applied to one plane. The shares always sum
+to 1, so the tip always reaches the full angle and the flap still lands exactly flat — the
+distribution only decides the shape on the way. Concentrated at the crease = rigid plane; spread
+evenly = a bow with the free edge leading and the body following.
+
+**The bend is sprung, and that is the whole effect.** The target shape is `BEND_MAX * 4p(1-p)` — zero
+at both ends of the drag, peaking in the middle — but what gets drawn chases that target through a
+spring (`BEND_STIFF` 120, `BEND_DAMP` 11, ~16% overshoot). So the edge you are holding tracks your
+finger exactly, while the *shape* between the crease and that edge lags and catches up, and overshoots
+slightly when you stop. Measured on a real drag: the shape trails its target by up to 0.12, recoils
+0.024 past flat after the fold completes, and settles in 383ms at exactly flat.
+
+**`BEND_MAX` is small on purpose (0.26).** At 0.7 the curl was tight enough that the slices read as
+stacked slabs — banded, not bent, which is exactly what was reported from the phone. The bow is
+supposed to be barely perceptible; the *motion* is what sells it.
+
+The spring's frame loop stops once it has settled and the finger is up, so an idle page is not holding
+a loop open. Transforms are only written when the rounded string actually changes — the fold-2 hinges
+never change during a fold-1 drag, and re-assigning a transform on a deep preserve-3d chain
+re-composites the whole subtree.
 
 Three things this cost, all of which took a fix — don't undo them:
 
@@ -149,9 +164,13 @@ Three things this cost, all of which took a fix — don't undo them:
   offsets, and on a fractional boundary each resamples at a different sub-pixel phase, leaving a faint
   line along the seam when flat. The 1px bleed does *not* fix this — it closes gaps, not phase.
 
-More slices is not better: past ~10 the curve stops improving and every slice is another composited
-plane. At 6x CPU throttle a bending drag runs a 17.9ms median with 2 of 196 frames over 32ms, the
-same as the rigid version.
+More slices is not better, and with the spring they are actively expensive: every level of the nested
+chain re-composites whenever any level changes, which is now every frame. Measured at 6x CPU throttle,
+under the finger: 10 slices costs a 28.9ms median with 24 frames over 32ms; **7 costs 24.2ms with
+4**, and at `BEND_MAX` 0.26 looks identical. The instant-bend control is 19.1ms — so the spring is not
+free, and that is the price of the effect. If it ever needs to be cheaper, the fix is to stop nesting
+the slices and compute each one's absolute transform instead, so a change to one does not re-composite
+the rest.
 
 **Fold 2 does not bend yet.** Its flap is still one rigid piece. Doing the same for fold 2 means
 slicing TR both ways — it already carries fold 1's horizontal slices, and fold 2 needs vertical ones —
@@ -242,11 +261,20 @@ the cool side it falls into. `#glow` is the source, breathing over 19s. `#rays` 
 leaning in from it, drifting over 46s. `#stars` is dust on three tile sizes with no common factor —
 the old single 200px tile read as a visible grid — drifting over 120s.
 
-Three things make the light read as light rather than a painted smudge, and all three were needed:
-**multi-stop falloff** (a hot near-white core, fast decay, long warm tail — one soft stop looks
-fake), **a cool complement** on the far side, because warmth only reads as warmth against something
-colder, and **masking the dust and the shafts back toward the source**, since dust in the dark is
-invisible and unmasked shafts read as stripes on a page. **Everything that moves does so by `transform`/`opacity` only**, so it stays on the
+Four things make the light read as light rather than a painted smudge, and all four were needed:
+**multi-stop falloff** (a hot near-white core, fast decay, long tail — one soft stop looks fake),
+**a cool complement** on the far side, because warmth only reads as warmth against something colder,
+**masking the dust and the shafts back toward the source**, since dust in the dark is invisible and
+unmasked shafts read as stripes on a page, and **the source's centre being off the screen entirely**.
+
+That last one matters and was reported from the phone: `#glow` used to be centred at about +10vmax,
+i.e. inside the frame and behind the paper, so the paper appeared to be lit by something sitting in
+front of it. Its centre is now at -35vmax and only the outer falloff reaches in. Keep it off-screen.
+
+The warm side is also deliberately **not orange**. Saturated amber read as a colour wash competing
+with the paper's own warmth; a warm near-white reads as light, and the cool side carries most of the
+colour instead. Stars are a hard bright point over a soft halo — a dot on its own reads as grey
+speckle, not as something shining. **Everything that moves does so by `transform`/`opacity` only**, so it stays on the
 compositor: at 6x CPU throttle a fold drag runs a 16.6ms median with zero frames over 32ms. Honour
 `prefers-reduced-motion`, which is already wired. A noise/dither layer was tried against gradient
 banding and measured as doing nothing (longest flat run 12px vs 11px) — Chrome already dithers these
