@@ -235,12 +235,18 @@ against real gesture speeds — an unhurried drag reads ~0.0008 and a brisk one 
 still leave `OPEN_THRESHOLD` in charge, while a flick reads ~0.006 and up. The ease stays **monotone**
 (`power3.out`): any overshoot would carry fold 1 past flat and push the flap below the sheet under it.
 
-**The background is a lit room, not a starfield** (`#sky`, `#glow`, `#stars` in `index.html` /
-`style.css`). The paper is lit warmly from the left, so the space around it is too, or the paper reads
-as a cut-out pasted on black. `#sky` is the static base: vignette, a warm wash from off-canvas left, a
-cool fall-off to the right. `#glow` is the source itself, breathing over 19s. `#stars` is dust on
-three tile sizes with no common factor — the old single 200px tile read as a visible grid — drifting
-over 120s. **Everything that moves does so by `transform`/`opacity` only**, so it stays on the
+**The background is a lit room, not a starfield** (`#sky`, `#glow`, `#rays`, `#stars` in
+`index.html` / `style.css`). The paper is lit warmly from the left, so the space around it is too, or
+the paper reads as a cut-out pasted on black. `#sky` is the static base: vignette, the warm side, and
+the cool side it falls into. `#glow` is the source, breathing over 19s. `#rays` is faint shafts
+leaning in from it, drifting over 46s. `#stars` is dust on three tile sizes with no common factor —
+the old single 200px tile read as a visible grid — drifting over 120s.
+
+Three things make the light read as light rather than a painted smudge, and all three were needed:
+**multi-stop falloff** (a hot near-white core, fast decay, long warm tail — one soft stop looks
+fake), **a cool complement** on the far side, because warmth only reads as warmth against something
+colder, and **masking the dust and the shafts back toward the source**, since dust in the dark is
+invisible and unmasked shafts read as stripes on a page. **Everything that moves does so by `transform`/`opacity` only**, so it stays on the
 compositor: at 6x CPU throttle a fold drag runs a 16.6ms median with zero frames over 32ms. Honour
 `prefers-reduced-motion`, which is already wired. A noise/dither layer was tried against gradient
 banding and measured as doing nothing (longest flat run 12px vs 11px) — Chrome already dithers these
