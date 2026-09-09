@@ -2,8 +2,9 @@
 // UNWRAPPED — Turning a written note into a link
 //
 // The write page's half of the sharing flow. write.js owns the writing and is
-// locked, so this only reaches in for its two top-level functions: serialize()
-// for the recorded strokes, and setStatus() for the status line.
+// locked, so this only reaches in for one top-level function: serialize(),
+// for the recorded strokes. Its own status line is write.js's diagnostic
+// channel and stays hidden; anything worth saying to a person goes in #say.
 //
 // There is no upload step because there is nothing to upload. link.js packs the
 // whole message into the URL, so pressing Create link is instant, works
@@ -20,7 +21,20 @@
     const openLink = document.getElementById('share-open');
     if (!btnLink || !panel || !urlBox) return;
 
-    const say = msg => { if (typeof setStatus === 'function') setStatus(msg); };
+    // One quiet line under the sheet, and only when there is something worth
+    // saying. It is not a status bar: it clears itself, and it never carries
+    // counts or diagnostics — the share panel appearing is the feedback that
+    // the link was built.
+    const sayEl = document.getElementById('say');
+    let sayTimer = null;
+
+    function say(msg) {
+        if (!sayEl) return;
+        clearTimeout(sayTimer);
+        sayEl.textContent = msg;
+        sayEl.hidden = !msg;
+        if (msg) sayTimer = setTimeout(() => { sayEl.hidden = true; }, 4000);
+    }
 
     let current = '';
 
@@ -37,7 +51,7 @@
         }
 
         btnLink.disabled = true;
-        say('building the link…');
+        say('');
         try {
             const code = await UnwrappedLink.encode(message);
             const url = new URL('note.html', location.href);
@@ -49,8 +63,6 @@
             panel.hidden = false;
             btnShare.hidden = !navigator.share;
 
-            const pts = message.strokes.reduce((n, s) => n + s.points.length, 0);
-            say(`link ready · ${message.strokes.length} strokes · ${pts} pts · ${current.length} characters`);
         } catch (err) {
             say('could not build the link');
         } finally {
@@ -84,11 +96,14 @@
     // Writing again invalidates the link that is on screen.
     ['btn-undo', 'btn-clear'].forEach(id => {
         const b = document.getElementById(id);
-        if (b) b.addEventListener('click', () => { panel.hidden = true; current = ''; });
+        if (b) b.addEventListener('click', () => { panel.hidden = true; current = ''; say(''); });
     });
 
+    // Starting to write clears both the stale link and anything still on the
+    // notice line — you are past whatever it was telling you.
     const surface = document.getElementById('ink');
     if (surface) surface.addEventListener('pointerdown', () => {
+        say('');
         if (!panel.hidden) { panel.hidden = true; current = ''; }
     });
 

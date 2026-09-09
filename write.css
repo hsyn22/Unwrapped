@@ -123,13 +123,22 @@ body {
             mask-repeat: no-repeat;
 }
 
-#status {
+/* write.js's diagnostics. Kept in the DOM because write.js is locked and
+   resolves this at load, but never shown. */
+#status { display: none; }
+
+/* One quiet line, and only when there is something to say — no permanent
+   status bar under the paper. #say[hidden] is spelled out because an id rule
+   with a display beats [hidden], the trap this page has now hit twice. */
+#say[hidden] { display: none; }
+
+#say {
     font-size: 0.75rem;
     color: #e2cdb0a8;
     letter-spacing: 0.02em;
-    min-height: 1em;
     text-align: center;
     padding: 0 12px;
+    transition: opacity 0.3s ease;
 }
 
 #controls {

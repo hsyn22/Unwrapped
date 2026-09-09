@@ -320,6 +320,14 @@ parents both the scene and its shadow (so they turn together), and `script.js`, 
 The **write** page is deliberately NOT tilted: writing is a task and a tilted sheet is harder to write
 on, while receiving is a scene.
 
+**There is no status line.** `write.js` writes its own diagnostics — `paper shape alpha · 75% of
+image`, stroke counts — into `#status`, which was the first thing anyone read on opening the site.
+`write.js` is locked and resolves `statusEl` at load, so `#status` stays in the DOM and is hidden in
+`write.css`; **do not delete the element**. What is worth saying to a person goes in `#say` instead:
+one quiet line under the sheet, written only by `create.js`, cleared after four seconds and cleared
+again the moment writing resumes. It never carries counts or diagnostics — the share panel appearing
+is the feedback that the link was built.
+
 **The write page's chrome recedes** rather than sitting in lit boxes. The brightest thing on that page
 has to be the paper, the same as on the note page — a row of lit buttons around a lit sheet flattens
 the whole thing back into a web form. So the title, status line and buttons are dim warm text on the
