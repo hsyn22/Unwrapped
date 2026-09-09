@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Unwrapped — write a note</title>
-    <link rel="stylesheet" href="surface.css?v=13">
-    <link rel="stylesheet" href="write.css?v=13">
+    <link rel="stylesheet" href="surface.css?v=14">
+    <link rel="stylesheet" href="write.css?v=14">
 </head>
 <body>
 
@@ -25,7 +25,16 @@
             <canvas id="ink"></canvas>
         </div>
 
-        <div id="status">write with your finger</div>
+        <!-- write.js looks this up at load and writes its diagnostics into it
+             ("paper shape alpha · 75% of image", stroke counts). Useful while
+             building the mask, noise for whoever is writing a note, so it is
+             kept in the DOM for write.js and hidden in write.css. -->
+        <div id="status"></div>
+
+        <!-- What is actually worth saying, and only when there is something to
+             say. create.js writes here; it is empty and takes no room the rest
+             of the time. -->
+        <div id="say" hidden></div>
 
         <div id="controls">
             <button id="btn-undo">Undo</button>
@@ -49,9 +58,9 @@
 
     </main>
 
-    <script src="backdrop.js?v=13"></script>
-    <script src="write.js?v=13"></script>
-    <script src="link.js?v=13"></script>
-    <script src="create.js?v=13"></script>
+    <script src="backdrop.js?v=14"></script>
+    <script src="write.js?v=14"></script>
+    <script src="link.js?v=14"></script>
+    <script src="create.js?v=14"></script>
 </body>
 </html>
