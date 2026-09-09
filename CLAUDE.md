@@ -272,36 +272,40 @@ against real gesture speeds — an unhurried drag reads ~0.0008 and a brisk one 
 still leave `OPEN_THRESHOLD` in charge, while a flick reads ~0.006 and up. The ease stays **monotone**
 (`power3.out`): any overshoot would carry fold 1 past flat and push the flap below the sheet under it.
 
-**The background is a starry night** (`sky.js`, plus `#sky`, `#milkyway`, `#stars-far`, `#stars`,
-`#glints`, `#glow`). Earlier versions were a lit room with a warm glow; that was rejected from the
-phone twice — first for the orange, then outright.
+**The backdrop is a warm room** (`backdrop.js`, plus `#backdrop`, `#bokeh-far`, `#bokeh-near`,
+`#motes`, `#glow`). The paper is lit warmly from low and to the left. A cold background fought that —
+the paper read as a cut-out pasted onto someone else's photograph — and the starry-night version was
+rejected from the phone for exactly that. **The background has to be warm because the paper is.**
 
-**The stars are drawn into canvases by `sky.js`, not written as CSS gradients.** CSS could manage a
-handful of dots before the repeat read as a grid; this puts hundreds down with real variation in size,
-brightness and colour. Three seamless tiles — `far` (many, small, dim), `near` (fewer, brighter, with
-halos), `dense` (very fine, masked to the Milky Way band). Seamless means a star near an edge is drawn
-again wrapped round the other side. The RNG is **seeded**, so the sky is identical every load; a sky
-that reshuffles on reload feels like a screensaver, not a place.
+**The lights and dust are drawn into canvases by `backdrop.js`**, not written as CSS gradients. CSS
+manages one or two soft blobs before it starts to look like CSS; this places every light and every
+mote individually, with real variation in size, warmth and focus.
 
-**Twinkling is faked in two layers.** The tiles are static images, so stars inside them cannot twinkle
-individually; instead each layer pulses on its own slow cycle, out of phase, so different parts of the
-sky brighten at different moments. On top of that sit twelve real `.glint` elements with crossed rays
-and their own timings. A handful of genuinely twinkling stars does far more than trying to animate all
-of them, and the crossed rays are what make a bright dot read as a star.
+**They are full-screen images, not tiles.** A big soft shape gives a repeat away instantly — one
+recognisable blob appearing twice is worse than no blobs — so each layer is one canvas the size of the
+viewport plus a drift margin, regenerated on resize. Rendered at `SCALE` 1.5, which is
+indistinguishable at this softness and a quarter of the memory. The RNG is seeded, so the arrangement
+is the same every time the page opens.
 
-**The drift overhang must exceed the drift distance.** The star layers used to overhang by 14% and
-drift 460-700px, so the layer's own edge slid into frame as a straight line across the sky. They now
-overhang 90px and drift under 65px. The drift also **alternates** rather than looping: a linear loop
-would have to travel a whole tile to restart without a jump, and a whole tile is far more overhang
-than is affordable in layer memory.
+**Small bokeh keeps a defined rim; big bokeh must not.** Real bokeh is a flattish disc with a brighter
+edge, and that rim is most of what makes a small one read as a lens. At large radii the same rim stops
+looking like a lens and starts looking like a drawn circle, which was the first thing wrong with this
+layer. So `rim` is 0.6 for the far (small) lights and 0.12 for the near (large) ones, and the falloff
+past the rim is long, because a short one draws a ring.
 
-`#glow` survives only as a faint distant warmth low on the left, with its centre well off-screen
-(-25vmax). It is not a light in the room — it is just enough that the paper's own warm left-hand
-lighting has somewhere to have come from. Keep its centre off-screen; when it was at +10vmax the paper
-appeared lit by something in front of it, which was reported from the phone.
+**One cool note opposite the light.** `#backdrop` carries a plum wash in the far shadow. Warm on warm
+goes muddy; the counterpoint is what stops it.
 
-**Everything that moves does so by `transform`/`opacity` only**, so it stays on the compositor: at 6x
-CPU throttle a fold drag runs an 18ms median with 3 of 196 frames over 32ms. Honour
+`#glow` is the source itself, low and well off the screen (centre at -29vmax). Only its falloff
+reaches in. Keep its centre off-screen: when it was at +10vmax the paper appeared lit by something in
+front of it, which was reported from the phone.
+
+**The drift margin must exceed the drift distance.** An earlier version overhung by 14% and drifted
+460-700px, so the layer's own edge slid into frame as a straight line. `PAD` is 110px and the drifts
+are under 60px. The drift also **alternates** rather than looping, so it never has to travel a whole
+period to restart without a jump.
+
+**Everything that moves does so by `transform`/`opacity` only**, so it stays on the compositor. Honour
 `prefers-reduced-motion`, which is already wired. A noise/dither layer was tried against gradient
 banding and measured as doing nothing (longest flat run 12px vs 11px) — Chrome already dithers these
 gradients. Don't re-add it.
@@ -495,7 +499,7 @@ Unwrapped/
     index.html           folding experience  [LOCKED]
     style.css            folding styles      [LOCKED]
     script.js            folding logic       [LOCKED]
-    sky.js               the night sky
+    backdrop.js          the warm backdrop
     silhouette.js        folded-back masks
     ink.js               handwriting on the paper
     message.json         (optional — a message for index.html to load)

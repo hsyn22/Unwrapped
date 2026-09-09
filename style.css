@@ -17,130 +17,67 @@ body {
     color: #f5f5f5;
 }
 
-/* ---- background: a night sky ----------------------------------------
-   The stars themselves are drawn into canvases by sky.js and tiled here —
-   CSS gradients could only manage a handful of dots before the repeat read
-   as a grid. This file owns the sky's colour, the layering, and the motion.
-   Everything that moves does so by transform/opacity only, so it stays on
-   the compositor and the fold never loses a frame to the background.     */
+/* ---- backdrop: a warm room ------------------------------------------
+   The paper is lit warmly from low and to the left, so the space around it
+   is too. A cold background fought it and the paper read as a cut-out.
+   backdrop.js draws the lights and the dust; this file owns the ground
+   colour, the layering and the motion. Everything that moves does so by
+   transform/opacity only, so it stays on the compositor.               */
 
-/* Depth of the sky. Darkest overhead, a faint lift toward the horizon. */
-#sky {
+#backdrop {
     position: fixed;
     inset: 0;
     z-index: 0;
     background:
-        radial-gradient(95% 72% at 50% 44%, transparent 38%, rgba(0, 0, 0, 0.52) 100%),
-        radial-gradient(130% 78% at 46% 112%, rgba(42, 62, 112, 0.40), transparent 64%),
-        linear-gradient(#03040a 0%, #05080f 42%, #070d1b 100%);
+        radial-gradient(88% 72% at 50% 46%, transparent 32%, rgba(0, 0, 0, 0.56) 100%),
+        /* the warm side, low and left, where the source is */
+        radial-gradient(135% 105% at -16% 86%,
+            rgba(255, 178, 108, 0.17) 0%,
+            rgba(232, 134, 70, 0.07) 32%,
+            rgba(180, 96, 52, 0.02) 56%,
+            transparent 74%),
+        /* a plum counterpoint in the far shadow. Warm on warm goes muddy;
+           one cool note opposite the light is what keeps it from doing that. */
+        radial-gradient(105% 92% at 112% 6%, rgba(92, 52, 88, 0.22), transparent 62%),
+        linear-gradient(#090705 0%, #100b08 46%, #180f0a 100%);
 }
 
-/* The Milky Way — the dense star tile and a faint haze, masked to a band and
-   rotated across the frame. sky.js supplies both backgrounds. */
-#milkyway {
+/* Out-of-focus lights at two depths, and the dust between them. Each is one
+   full-screen image, not a tile: a repeated blob is instantly recognisable. */
+#bokeh-far,
+#bokeh-near,
+#motes {
     position: fixed;
-    inset: -30%;
+    inset: -110px;              /* must exceed the drift, or the layer's own
+                                   edge slides into frame */
     z-index: 0;
     pointer-events: none;
-    transform: rotate(-26deg);
-    -webkit-mask-image: radial-gradient(56% 12% at 50% 50%, #000 0%, rgba(0,0,0,0.8) 34%, rgba(0,0,0,0.3) 62%, transparent 86%);
-            mask-image: radial-gradient(56% 12% at 50% 50%, #000 0%, rgba(0,0,0,0.8) 34%, rgba(0,0,0,0.3) 62%, transparent 86%);
-    will-change: opacity;
-    animation: mw-pulse 26s ease-in-out infinite;
-}
-
-/* Two star layers at different depths. They drift by exactly one tile, so the
-   loop has no seam, and they pulse on different cycles — which is what stands
-   in for twinkling across a static image. */
-/* The overhang has to exceed the drift, or the layer's own edge slides into
-   frame as a straight line across the sky. And the drift alternates rather
-   than looping: a linear loop would have to travel a whole tile to restart
-   without a jump, and a whole tile is far more overhang than is affordable. */
-#stars-far,
-#stars {
-    position: fixed;
-    inset: -90px;
-    z-index: 0;
-    pointer-events: none;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
     will-change: transform, opacity;
     animation-direction: alternate;
     animation-iteration-count: infinite;
     animation-timing-function: ease-in-out;
 }
 
-#stars-far {
-    animation-name: drift-far, pulse-far;
-    animation-duration: 240s, 9.5s;
-}
+#bokeh-far  { animation-name: drift-a, breathe-a; animation-duration: 96s, 15s; }
+#bokeh-near { animation-name: drift-b, breathe-b; animation-duration: 68s, 21s; }
+#motes      { animation-name: drift-c, breathe-c; animation-duration: 132s, 9s; }
 
-#stars {
-    animation-name: drift-near, pulse-near;
-    animation-duration: 150s, 6.5s;
-}
+@keyframes drift-a { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(34px, -22px, 0); } }
+@keyframes drift-b { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-46px, 30px, 0); } }
+@keyframes drift-c { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-58px, -38px, 0); } }
 
-@keyframes drift-far  { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-38px, -26px, 0); } }
-@keyframes drift-near { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-62px, -44px, 0); } }
-@keyframes pulse-far  { 0%, 100% { opacity: 0.62; } 50% { opacity: 0.88; } }
-@keyframes pulse-near { 0%, 100% { opacity: 0.78; } 50% { opacity: 1; } }
-@keyframes mw-pulse   { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+@keyframes breathe-a { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+@keyframes breathe-b { 0%, 100% { opacity: 0.6;  } 50% { opacity: 0.95; } }
+@keyframes breathe-c { 0%, 100% { opacity: 0.7;  } 50% { opacity: 1; } }
 
-/* The dozen stars that genuinely twinkle, each on its own timing. A handful of
-   these reads as a living sky far better than trying to animate all of them. */
-#glints {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-}
-
-.glint {
-    position: absolute;
-    width: 2px;
-    height: 2px;
-    margin: -1px 0 0 -1px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow:
-        0 0 5px 1px rgba(255, 255, 255, 0.5),
-        0 0 13px 3px rgba(168, 198, 255, 0.2);
-    transform: scale(var(--s, 1));
-    animation-name: twinkle;
-    animation-iteration-count: infinite;
-    animation-timing-function: ease-in-out;
-    will-change: opacity;
-}
-
-/* Crossed rays — the thing that makes a bright star read as a star. */
-.glint::before,
-.glint::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.glint::before {
-    width: 14px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
-}
-
-.glint::after {
-    width: 1px;
-    height: 14px;
-    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.5), transparent);
-}
-
-@keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-
-/* A distant warmth low on the left, well off the screen. Not a light in the
-   room — just enough that the paper's own warm left-hand lighting has
-   somewhere to have come from. Keep its centre off-screen. */
+/* The source itself, low and well off the screen. Only its falloff reaches in:
+   with its centre on screen the paper looked lit from in front of itself. */
 #glow {
     position: fixed;
-    left: -100vmax;
-    top: 76%;
+    left: -104vmax;
+    top: 82%;
     width: 150vmax;
     height: 150vmax;
     margin-top: -75vmax;
@@ -148,21 +85,21 @@ body {
     z-index: 0;
     pointer-events: none;
     background: radial-gradient(closest-side,
-        rgba(255, 228, 194, 0.075) 0%,
-        rgba(250, 202, 158, 0.04) 26%,
-        rgba(226, 170, 130, 0.013) 52%,
+        rgba(255, 226, 188, 0.12) 0%,
+        rgba(255, 194, 140, 0.068) 24%,
+        rgba(236, 156, 104, 0.022) 50%,
         transparent 76%);
     will-change: transform, opacity;
     animation: glow-breathe 23s ease-in-out infinite;
 }
 
 @keyframes glow-breathe {
-    0%, 100% { transform: scale(1)    translate3d(0, 0, 0);           opacity: 0.7; }
-    50%      { transform: scale(1.08) translate3d(1.6vmax, -1vmax, 0); opacity: 1; }
+    0%, 100% { transform: scale(1)    translate3d(0, 0, 0);            opacity: 0.72; }
+    50%      { transform: scale(1.07) translate3d(1.6vmax, -1vmax, 0); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    #glow, #stars, #stars-far, #milkyway, .glint { animation: none; }
+    #glow, #bokeh-far, #bokeh-near, #motes { animation: none; }
 }
 
 #experience {
