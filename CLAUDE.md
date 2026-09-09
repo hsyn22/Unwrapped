@@ -480,6 +480,14 @@ branch, root folder. Every merge then publishes to `https://<user>.github.io/<re
 experience at `/index.html` and the handwriting lab at `/write.html`. Testing becomes "open a URL on
 the phone," with no file syncing.
 
+**Every local asset is loaded with `?v=N`, and N must be bumped whenever any of them change.**
+Pages serves assets with `cache-control: max-age=600`, so without this a phone can pair a freshly
+fetched `index.html` with a `script.js` from ten minutes ago. That is not a cosmetic glitch: the old
+script goes looking for markup the new HTML no longer has, throws before it reaches
+`addEventListener`, and **the paper stops moving entirely** — which looks exactly like a broken
+feature rather than a stale cache. It has already cost one test cycle. Reproduce it, if you ever need
+to, by serving the current `index.html` with the previous `script.js`.
+
 **The repo is public and Pages is live** at `https://hsyn22.github.io/Unwrapped/`, serving `main` from
 the root folder. So a test link only shows new work *after* the PR is merged — check what Pages is
 actually serving before writing test instructions, rather than assuming the branch is live. Mobile
