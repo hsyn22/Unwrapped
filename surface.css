@@ -1,0 +1,97 @@
+/* ============================================
+   UNWRAPPED — The surface, shared by both pages
+
+   You write a note on a desk and you read one on a desk, so both pages sit on
+   the same one. This file is the single source of truth for it; style.css and
+   write.css own only what is specific to their own page.
+
+   What makes a lamp-lit desk read as lamp-lit is not the objects on it. It is
+   that the light is a POOL: the corners fall away to almost nothing and the
+   paper is the brightest thing in the frame by a wide margin. So the work here
+   is all light and falloff, and there are no props at all — at phone size a
+   prop lives in a 40px strip around the edge and reads as a sticker rather
+   than as a room.
+
+   Layer order, all behind the page's own content:
+     #desk         the wood itself, and the warm pool on it
+     #desk-mottle  its slow unevenness      (drawn by backdrop.js)
+     #desk-grain   its fine texture         (drawn by backdrop.js)
+     #lamp         the light, breathing
+     #vignette     the darkness at the edges
+
+   --edge is the one dial. It is how dark the corners go: 0 removes the
+   vignette entirely, 1 is as far as this goes. Raise it and the note is more
+   alone in the dark; lower it if a phone screen turns the falloff muddy
+   instead of dark, which is the failure mode to watch for outdoors.
+   ============================================ */
+
+:root {
+    --edge: 0.62;
+}
+
+#desk,
+#desk-mottle,
+#desk-grain,
+#lamp,
+#vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Dark oiled wood, and the pool of light lying across it. Both the pool and
+   the lamp above are centred OFF the left edge: only their falloff reaches in,
+   so the light arrives from somewhere beyond the screen rather than from a
+   bright spot sitting on the desk in front of the note. */
+#desk {
+    background:
+        radial-gradient(128% 110% at -14% 46%,
+            rgba(255, 205, 150, 0.34) 0%,
+            rgba(240, 168, 104, 0.20) 24%,
+            rgba(176, 104, 52, 0.095) 48%,
+            rgba(120, 68, 32, 0.03) 68%,
+            transparent 86%),
+        linear-gradient(152deg, #2b1a0f 0%, #1c1109 46%, #0e0805 100%);
+}
+
+#desk-grain { opacity: 0.8; }
+
+/* The only thing on either page that moves, and only just: a real flame is
+   never quite steady. */
+#lamp {
+    background: radial-gradient(94% 100% at -12% 40%,
+        rgba(255, 228, 188, 0.22) 0%,
+        rgba(255, 202, 146, 0.10) 30%,
+        rgba(255, 186, 120, 0.03) 56%,
+        transparent 78%);
+    will-change: opacity;
+    animation: lamp-breathe 17s ease-in-out infinite;
+}
+
+@keyframes lamp-breathe {
+    0%, 100% { opacity: 0.8; }
+    50%      { opacity: 1; }
+}
+
+/* The corners go to almost nothing. This one layer does more for the feeling
+   than any object would: it is what turns an evenly-lit texture into a lamp
+   on a desk at night. It sits above the grain so it darkens that too —
+   texture in the dark corners would give the flatness away.
+
+   It has to stop short of the note, though. The note's contact shadow is
+   dark on a lit surface, so if the vignette reaches in far enough to darken
+   the ground the note is lying on, the shadow has nothing to fall on and the
+   note goes back to floating in black — which is the exact problem the
+   surface was built to fix. Hence the wide transparent middle. */
+#vignette {
+    background: radial-gradient(112% 74% at 42% 50%,
+        transparent 38%,
+        rgba(0, 0, 0, calc(var(--edge) * 0.26)) 62%,
+        rgba(0, 0, 0, calc(var(--edge) * 0.66)) 84%,
+        rgba(0, 0, 0, var(--edge)) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #lamp { animation: none; }
+}

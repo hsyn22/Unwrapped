@@ -272,11 +272,24 @@ against real gesture speeds — an unhurried drag reads ~0.0008 and a brisk one 
 still leave `OPEN_THRESHOLD` in charge, while a flick reads ~0.006 and up. The ease stays **monotone**
 (`power3.out`): any overshoot would carry fold 1 past flat and push the flap below the sheet under it.
 
-**The note lies on a surface** (`backdrop.js`, plus `#desk`, `#desk-mottle`, `#desk-grain`, `#lamp`).
-A warm surface seen straight down, with a pool of lamp light on it. Four earlier attempts at this —
-a lit room, a starry night, warm bokeh — were all rejected from the phone, and the reason each time
-was the same: they were backgrounds *behind* the note rather than something it was lying *on*.
-**The paper is lit warmly, so the surface must be warm too**; a cold one made it read as a cut-out.
+**The note lies on a surface** (`surface.css` + `backdrop.js`, plus `#desk`, `#desk-mottle`,
+`#desk-grain`, `#lamp`, `#vignette`). A warm surface seen straight down, with a pool of lamp light on
+it. Five earlier attempts — a lit room, a starry night, warm bokeh, an evenly-lit desk — were all
+rejected from the phone, and the reason each time was the same: they were backgrounds *behind* the
+note rather than something it was lying *on*. **The paper is lit warmly, so the surface must be warm
+too**; a cold one made it read as a cut-out.
+
+**It is in `surface.css` because both pages use it.** You write a note on a desk and you read one on a
+desk. `index.html` and `note.html` both link it and both carry the same five layer divs, so the desk
+cannot drift between them; `style.css` and `write.css` own only what is specific to their own page.
+
+**A full scene was considered and rejected** — a Victorian desk with an inkwell, books, a quill. What
+actually makes such a photograph read as lamp-lit is not the objects: it is that the light is a
+**pool**, the corners fall away to almost nothing, and the paper is the brightest thing in the frame
+by a wide margin. The objects are context around the edge of that, and at phone size there is no edge
+— the note fills the frame, so a prop lives in a 40px strip and reads as a sticker, not a room. Every
+prop would also have to be a real rendered asset to sit next to photographed paper. So the work here
+is all light and falloff, and there are no props at all.
 
 Two generated layers, because CSS cannot do either convincingly. `mottle` is the slow unevenness of a
 real surface — a dozen very soft, very low-contrast patches, full-screen and non-repeating, since a
@@ -284,8 +297,35 @@ large soft shape gives a repeat away instantly. `grain` is the fine texture, and
 because it is high-frequency enough that the repeat is invisible and a full-screen noise field would
 be pointlessly large. Both are seeded, so the surface is identical every load.
 
+**The lamp's centre is off the left edge**, so only its falloff reaches in. On-screen it read as
+something lighting the paper from in front of it, which was reported from the phone. `backdrop.js`'s
+mottle puts its lighter patches on the left to agree.
+
+**`--edge` is the one dial** (0.62, in `surface.css`): how dark the corners go. 0 removes the vignette,
+1 is as far as it goes. It is the single biggest thing here — it is what turns an evenly-lit texture
+into a lamp on a desk at night. But it **must stop short of the note**. The contact shadow is dark on a
+lit surface, so a vignette that reaches in far enough to darken the ground the note lies on leaves the
+shadow nothing to fall on and the note floats in black again — the exact problem the surface was built
+to fix. That is why the transparent middle is wide, and it was hit for real on the first attempt at
+this. Measured: the shadow darkens the desk under the note by 24 levels of 255, from 53 to 29.
+
 **Nothing here drifts.** A desk does not move, and the drifting layers of earlier versions were the
 source of a bug where a layer's own edge slid into frame as a straight line. Only `#lamp` breathes.
+
+**The note is set down at a slight angle** — `#paper-container` carries `rotate(-1.6deg)`. Small on
+purpose: this is the difference between looking *placed* and looking *rendered*, and more than a
+couple of degrees reads as deliberate. It is safe on the locked geometry because `#paper-container`
+parents both the scene and its shadow (so they turn together), and `script.js`, `ink.js` and
+`silhouette.js` measure with `offsetWidth` and pointer deltas, neither of which a rotation disturbs.
+The **write** page is deliberately NOT tilted: writing is a task and a tilted sheet is harder to write
+on, while receiving is a scene.
+
+**The write page's chrome recedes** rather than sitting in lit boxes. The brightest thing on that page
+has to be the paper, the same as on the note page — a row of lit buttons around a lit sheet flattens
+the whole thing back into a web form. So the title, status line and buttons are dim warm text on the
+desk and only the one action you are there for carries a fill, in the lamp's warm rather than white.
+Note that `#btn-copy` / `#btn-share` live in `#share-actions`, not `#controls`; styling only
+`#controls button` leaves a default white button sitting on the desk.
 
 **The note casts a shadow** (`#paper-shadow`). It is a sibling BEHIND `#paper-scene`, **never a filter
 on the folding pieces** — a filter creates a stacking context and would flatten the 3D chain, which is
@@ -293,7 +333,8 @@ the same class of bug as the old `#fold1-front` wrapper. It is laid out once at 
 then *scaled* per frame, so following the fold costs a transform rather than a relayout. Its footprint
 is the bottom-left quadrant when closed and the whole sheet when open, anchored at the bottom-left
 corner — the piece that never moves. It offsets down and right, away from the lamp, and is a little
-stronger when the note is folded, because a folded note stands proud of the surface.
+stronger when the note is folded, because a folded note stands proud of the surface. The write page's
+paper uses a `drop-shadow` filter offset the same way, so the two pages agree about where the light is.
 
 **Filters and shadows are deliberately stripped** from the fold system. No brightness dimming, no
 drop-shadow. This was to make raw 3D geometry inspectable without polish masking structural bugs.
@@ -452,6 +493,10 @@ two are for local testing only.
 - **Hiding the rectangular background visually while still allowing drawing there.** `overflow:hidden`
   does not solve this.
 - **A placeholder text overlay** standing in for the handwriting. One existed early and was removed.
+- **Building the room** — a Victorian desk scene with an inkwell, books, a quill, a lamp in frame.
+  The feeling that reference photographs of such a desk produce comes from the *light*, not the props;
+  at phone size the note fills the frame and any prop is a sticker in a 40px strip. Do the light.
+- **A visible pen or quill anywhere in the note experience.** The invisible writer is the whole trick.
 
 ---
 
@@ -463,9 +508,9 @@ spawning/disappearing/pass-through; correct final dimensions matching Open.png; 
 interaction.
 
 **Phase 2 — Physical realism. PART DONE.**
-Done: natural easing and the flick (see 3a), and the lit background. Still to do: shadows — the paper
-still floats with nothing under it — crease shading, subtle paper thickness, sound. This is where the
-stripped-out filters come back.
+Done: natural easing and the flick (see 3a); the surface the note lies on, its lamp and its vignette;
+and the contact shadow, so the note no longer floats. Still to do: crease shading, subtle paper
+thickness, sound. This is where the stripped-out filters come back.
 
 **Phase 3 — Handwriting integration. DONE — see 3d.**
 The lab records, the folded paper replays. Strokes are drawn onto the quadrant surfaces themselves,
@@ -495,6 +540,7 @@ Unwrapped/
     sounds/              (empty, not wired up)
     config.json          (exists, not wired up — future templates)
     index.html           THE MAIN PAGE — write a note, get a link
+    surface.css          the desk both pages sit on  (shared)
     write.css            write-page styles
     write.js             handwriting engine  [LOCKED]
     create.js            the Create-link button

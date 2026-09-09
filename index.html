@@ -4,9 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Unwrapped — write a note</title>
-    <link rel="stylesheet" href="write.css?v=12">
+    <link rel="stylesheet" href="surface.css?v=13">
+    <link rel="stylesheet" href="write.css?v=13">
 </head>
 <body>
+
+    <!-- The same desk the note is read on. backdrop.js finds these by id. -->
+    <div id="desk"></div>
+    <div id="desk-mottle"></div>
+    <div id="desk-grain"></div>
+    <div id="lamp"></div>
+    <div id="vignette"></div>
 
     <main id="lab">
 
@@ -41,8 +49,9 @@
 
     </main>
 
-    <script src="write.js?v=12"></script>
-    <script src="link.js?v=12"></script>
-    <script src="create.js?v=12"></script>
+    <script src="backdrop.js?v=13"></script>
+    <script src="write.js?v=13"></script>
+    <script src="link.js?v=13"></script>
+    <script src="create.js?v=13"></script>
 </body>
 </html>

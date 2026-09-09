@@ -56,9 +56,9 @@
             const cy = rnd() * h;
             const r  = MOTTLE.rMin + Math.pow(rnd(), 1.5) * (MOTTLE.rMax - MOTTLE.rMin);
             const a  = MOTTLE.aMin + rnd() * (MOTTLE.aMax - MOTTLE.aMin);
-            // Lighter patches near the lamp, darker ones away from it, so the
-            // unevenness agrees with where the light is.
-            const lit = (cx / w) < 0.55 ? rnd() < 0.68 : rnd() < 0.22;
+            // Lighter patches near the lamp — which is off the LEFT edge — and
+            // darker ones away from it, so the unevenness agrees with the light.
+            const lit = (cx / w) < 0.42 ? rnd() < 0.72 : rnd() < 0.18;
             const colour = lit ? pick(LIGHT) : pick(DARK);
 
             const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);

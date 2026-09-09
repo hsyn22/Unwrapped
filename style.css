@@ -18,51 +18,8 @@ body {
 }
 
 /* ---- the surface -----------------------------------------------------
-   The note lies on something, seen straight down, with a pool of lamp light
-   on it. That is what lets it cast a shadow instead of floating. backdrop.js
-   draws the unevenness and the grain; this file owns the colour, the light
-   and the shadow. Nothing drifts — a desk does not move.               */
-
-#desk {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    background:
-        radial-gradient(115% 85% at 50% 48%, transparent 26%, rgba(0, 0, 0, 0.62) 100%),
-        radial-gradient(78% 62% at 34% 40%,
-            rgba(255, 206, 152, 0.20) 0%,
-            rgba(236, 166, 106, 0.09) 34%,
-            rgba(150, 88, 46, 0.03) 62%,
-            transparent 82%),
-        linear-gradient(158deg, #2a1a10 0%, #1d1209 44%, #130c06 100%);
-}
-
-#desk-mottle,
-#desk-grain,
-#lamp {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-}
-
-#desk-grain { opacity: 0.85; }
-
-/* The lamp. The only thing on this page that moves, and only just — a real
-   one flickers a little. */
-#lamp {
-    background: radial-gradient(64% 50% at 32% 38%,
-        rgba(255, 224, 180, 0.13) 0%,
-        rgba(255, 198, 140, 0.055) 36%,
-        transparent 74%);
-    will-change: opacity;
-    animation: lamp-breathe 17s ease-in-out infinite;
-}
-
-@keyframes lamp-breathe {
-    0%, 100% { opacity: 0.82; }
-    50%      { opacity: 1; }
-}
+   The desk itself lives in surface.css, shared with the write page, so both
+   pages sit on the same one. This file owns only the note's own shadow.   */
 
 /* The note's shadow. Sized every frame by script.js to the paper's current
    footprint, offset away from the lamp. Soft on purpose: a contact shadow
@@ -81,10 +38,6 @@ body {
         transparent 100%);
 }
 
-@media (prefers-reduced-motion: reduce) {
-    #lamp { animation: none; }
-}
-
 #experience {
     position: relative;
     z-index: 1;
@@ -96,11 +49,18 @@ body {
     touch-action: none;
 }
 
+/* The note is set down at a slight angle, the way a real one would be.
+   Small on purpose: this is the difference between looking placed and looking
+   rendered, and any more than a couple of degrees looks deliberate instead.
+   It rotates the shadow with it, since both are children here, and script.js
+   measures with offsetWidth and pointer deltas, neither of which a rotation
+   disturbs. */
 #paper-container {
     position: relative;
     width: 240px;
     height: 320px;
     perspective: 1700px;
+    transform: rotate(-1.6deg);
 }
 
 #paper-scene {
@@ -195,9 +155,9 @@ body {
     left: 0;
     right: 0;
     text-align: center;
-    font-size: 0.9rem;
-    color: #ffffff99;
-    letter-spacing: 0.03em;
+    font-size: 0.82rem;
+    color: #e6d3b87a;
+    letter-spacing: 0.06em;
     transition: opacity 0.4s ease;
     z-index: 1;
 }
