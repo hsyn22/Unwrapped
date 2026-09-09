@@ -1,10 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- ?v=N on every local asset. GitHub Pages serves these with
+         cache-control: max-age=600, so without it a phone can pair a fresh
+         index.html with a script.js from ten minutes ago. That mismatch is
+         not a cosmetic glitch: script.js goes looking for markup that no
+         longer exists, throws before it registers the drag handlers, and the
+         paper stops moving entirely. BUMP N whenever any of these files
+         change. -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Unwrapped ❤️</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
@@ -79,8 +86,8 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
-    <script src="script.js"></script>
-    <script src="silhouette.js"></script>
-    <script src="ink.js"></script>
+    <script src="script.js?v=6"></script>
+    <script src="silhouette.js?v=6"></script>
+    <script src="ink.js?v=6"></script>
 </body>
 </html>
