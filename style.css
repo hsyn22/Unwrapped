@@ -17,89 +17,72 @@ body {
     color: #f5f5f5;
 }
 
-/* ---- backdrop: a warm room ------------------------------------------
-   The paper is lit warmly from low and to the left, so the space around it
-   is too. A cold background fought it and the paper read as a cut-out.
-   backdrop.js draws the lights and the dust; this file owns the ground
-   colour, the layering and the motion. Everything that moves does so by
-   transform/opacity only, so it stays on the compositor.               */
+/* ---- the surface -----------------------------------------------------
+   The note lies on something, seen straight down, with a pool of lamp light
+   on it. That is what lets it cast a shadow instead of floating. backdrop.js
+   draws the unevenness and the grain; this file owns the colour, the light
+   and the shadow. Nothing drifts — a desk does not move.               */
 
-#backdrop {
+#desk {
     position: fixed;
     inset: 0;
     z-index: 0;
     background:
-        radial-gradient(88% 72% at 50% 46%, transparent 32%, rgba(0, 0, 0, 0.56) 100%),
-        /* the warm side, low and left, where the source is */
-        radial-gradient(135% 105% at -16% 86%,
-            rgba(255, 178, 108, 0.17) 0%,
-            rgba(232, 134, 70, 0.07) 32%,
-            rgba(180, 96, 52, 0.02) 56%,
-            transparent 74%),
-        /* a plum counterpoint in the far shadow. Warm on warm goes muddy;
-           one cool note opposite the light is what keeps it from doing that. */
-        radial-gradient(105% 92% at 112% 6%, rgba(92, 52, 88, 0.22), transparent 62%),
-        linear-gradient(#090705 0%, #100b08 46%, #180f0a 100%);
+        radial-gradient(115% 85% at 50% 48%, transparent 26%, rgba(0, 0, 0, 0.62) 100%),
+        radial-gradient(78% 62% at 34% 40%,
+            rgba(255, 206, 152, 0.20) 0%,
+            rgba(236, 166, 106, 0.09) 34%,
+            rgba(150, 88, 46, 0.03) 62%,
+            transparent 82%),
+        linear-gradient(158deg, #2a1a10 0%, #1d1209 44%, #130c06 100%);
 }
 
-/* Out-of-focus lights at two depths, and the dust between them. Each is one
-   full-screen image, not a tile: a repeated blob is instantly recognisable. */
-#bokeh-far,
-#bokeh-near,
-#motes {
+#desk-mottle,
+#desk-grain,
+#lamp {
     position: fixed;
-    inset: -110px;              /* must exceed the drift, or the layer's own
-                                   edge slides into frame */
+    inset: 0;
     z-index: 0;
     pointer-events: none;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    will-change: transform, opacity;
-    animation-direction: alternate;
-    animation-iteration-count: infinite;
-    animation-timing-function: ease-in-out;
 }
 
-#bokeh-far  { animation-name: drift-a, breathe-a; animation-duration: 96s, 15s; }
-#bokeh-near { animation-name: drift-b, breathe-b; animation-duration: 68s, 21s; }
-#motes      { animation-name: drift-c, breathe-c; animation-duration: 132s, 9s; }
+#desk-grain { opacity: 0.85; }
 
-@keyframes drift-a { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(34px, -22px, 0); } }
-@keyframes drift-b { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-46px, 30px, 0); } }
-@keyframes drift-c { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-58px, -38px, 0); } }
+/* The lamp. The only thing on this page that moves, and only just — a real
+   one flickers a little. */
+#lamp {
+    background: radial-gradient(64% 50% at 32% 38%,
+        rgba(255, 224, 180, 0.13) 0%,
+        rgba(255, 198, 140, 0.055) 36%,
+        transparent 74%);
+    will-change: opacity;
+    animation: lamp-breathe 17s ease-in-out infinite;
+}
 
-@keyframes breathe-a { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
-@keyframes breathe-b { 0%, 100% { opacity: 0.6;  } 50% { opacity: 0.95; } }
-@keyframes breathe-c { 0%, 100% { opacity: 0.7;  } 50% { opacity: 1; } }
+@keyframes lamp-breathe {
+    0%, 100% { opacity: 0.82; }
+    50%      { opacity: 1; }
+}
 
-/* The source itself, low and well off the screen. Only its falloff reaches in:
-   with its centre on screen the paper looked lit from in front of itself. */
-#glow {
-    position: fixed;
-    left: -104vmax;
-    top: 82%;
-    width: 150vmax;
-    height: 150vmax;
-    margin-top: -75vmax;
-    border-radius: 50%;
-    z-index: 0;
+/* The note's shadow. Sized every frame by script.js to the paper's current
+   footprint, offset away from the lamp. Soft on purpose: a contact shadow
+   under paper is diffuse, and a sharp one would look cut out. */
+#paper-shadow {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    transform-origin: 0 100%;   /* bottom-left — the corner that never moves */
     pointer-events: none;
+    z-index: 0;
     background: radial-gradient(closest-side,
-        rgba(255, 226, 188, 0.12) 0%,
-        rgba(255, 194, 140, 0.068) 24%,
-        rgba(236, 156, 104, 0.022) 50%,
-        transparent 76%);
-    will-change: transform, opacity;
-    animation: glow-breathe 23s ease-in-out infinite;
-}
-
-@keyframes glow-breathe {
-    0%, 100% { transform: scale(1)    translate3d(0, 0, 0);            opacity: 0.72; }
-    50%      { transform: scale(1.07) translate3d(1.6vmax, -1vmax, 0); opacity: 1; }
+        rgba(0, 0, 0, 0.46) 0%,
+        rgba(0, 0, 0, 0.34) 46%,
+        rgba(0, 0, 0, 0.13) 74%,
+        transparent 100%);
 }
 
 @media (prefers-reduced-motion: reduce) {
-    #glow, #bokeh-far, #bokeh-near, #motes { animation: none; }
+    #lamp { animation: none; }
 }
 
 #experience {
@@ -122,6 +105,7 @@ body {
 
 #paper-scene {
     position: relative;
+    z-index: 1;
     width: 100%;
     height: 100%;
     transform-style: preserve-3d;

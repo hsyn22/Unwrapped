@@ -17,6 +17,59 @@ body {
     color: #f5f5f5;
 }
 
+#title {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #f2ece2;
+}
+
+/* An id rule with a display beats [hidden]'s display:none, so say so
+   explicitly — the same trap the fold page's debug panel fell into. */
+#share[hidden] { display: none; }
+
+#share {
+    width: min(94vw, 460px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+}
+
+#share-url {
+    width: 100%;
+    padding: 9px 11px;
+    font: inherit;
+    font-size: 0.78rem;
+    color: #d8d2c8;
+    background: #ffffff10;
+    border: 1px solid #ffffff33;
+    border-radius: 6px;
+    /* A link with a whole note in it is long. Keep it one quiet line rather
+       than letting it wrap over half the screen. */
+    text-overflow: ellipsis;
+}
+
+#share-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+#share-open {
+    color: #ffffff9c;
+    font-size: 0.8rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+#share-note {
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: #ffffff70;
+}
+
 #lab {
     height: 100dvh;
     display: flex;

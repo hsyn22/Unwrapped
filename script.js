@@ -42,6 +42,9 @@ const BEND_DAMP  = 7.6;   // under-damped on purpose: ~23% overshoot, so the bod
                           // swings past and settles. This is the recoil. Lower
                           // for more of it, higher to calm it down.
 
+const SHADOW_DX = 7;      // px — the shadow falls down and right, away from
+const SHADOW_DY = 9;      // the lamp, which sits up and to the left.
+
 const LIFT1 = 6;           // px — fold 1 thickness lift, tapers to 0 when open
 const LIFT2 = 2;           // px — fold 2 thickness lift, tapers to 0 when open
 // Closed-state depths: TL = LIFT1 (6), TR = LIFT1 - LIFT2 (4),
@@ -51,6 +54,7 @@ const LIFT2 = 2;           // px — fold 2 thickness lift, tapers to 0 when ope
 const paperContainer = document.getElementById('paper-container');
 const panelBL = document.getElementById('panel-bl');
 const fold1 = document.getElementById('fold1');
+const paperShadow = document.getElementById('paper-shadow');
 const fold2br = document.getElementById('fold2-br');
 
 // Clone index.html's single slice into the chain. Slice 0 sits on the crease;
@@ -192,6 +196,13 @@ function positionArtwork() {
     }
 
     stampOrigin(panelBL, 0, hingeY);
+
+    // The shadow is laid out once at full-paper size and then scaled per frame,
+    // so following the fold costs a transform rather than a relayout.
+    if (paperShadow) {
+        paperShadow.style.width  = `${paperW}px`;
+        paperShadow.style.height = `${paperH}px`;
+    }
 }
 
 function stampOrigin(el, ox, oy) {
@@ -284,6 +295,8 @@ let springLast = 0;
 const lastStripT = [];
 const lastColT = [];
 let lastFold1T = '';
+let lastShadowT = '';
+let lastShadowOp = '';
 
 function setT(el, value, prev) {
     if (value === prev) return prev;
@@ -307,6 +320,25 @@ function render() {
     for (let k = 0; k < BEND_STRIPS; k++) {
         const w = (k === 0 ? 1 - bend : 0) + even;
         lastStripT[k] = setT(strips[k], `rotateX(${deg(rot1 * w)}deg)`, lastStripT[k]);
+    }
+
+    // The note's shadow on the surface. Its footprint is the bottom-left
+    // quadrant when closed and the whole sheet when open, anchored at the
+    // bottom-left corner, which is the piece that never moves. Offset down and
+    // right, away from the lamp. A folded note stands proud of the surface, so
+    // its shadow is a little stronger than a flat sheet's.
+    if (paperShadow) {
+        const hinge = paperH * FOLD1_HINGE;
+        const sx = 0.5 * (1 + stage2Progress);
+        const sy = paperH ? ((paperH - hinge) + hinge * stage1Progress) / paperH : 1;
+        const folded = 1 - 0.5 * (stage1Progress + stage2Progress);
+        const t = `translate(${deg(SHADOW_DX)}px, ${deg(SHADOW_DY)}px) scale(${deg(sx)}, ${deg(sy)})`;
+        lastShadowT = setT(paperShadow, t, lastShadowT);
+        const op = (0.58 + 0.32 * folded).toFixed(3);
+        if (op !== lastShadowOp) {
+            paperShadow.style.opacity = op;
+            lastShadowOp = op;
+        }
     }
 
     // Fold 2, the same way one axis over. Column j's transform is identical for
