@@ -11,8 +11,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Unwrapped ❤️</title>
-    <link rel="stylesheet" href="surface.css?v=17">
-    <link rel="stylesheet" href="style.css?v=17">
+    <link rel="stylesheet" href="surface.css?v=18">
+    <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 
@@ -63,10 +63,17 @@
 
         <div id="hint">Swipe up to unfold</div>
 
-        <!-- The recipient's way in. Hidden until the note has finished
-             writing itself: offered any earlier it competes with the message,
-             which is the one thing this page exists to deliver. -->
-        <a id="write-yours" href="index.html" class="hidden">write your own</a>
+        <!-- Everything offered to a recipient, and all of it hidden until the
+             note has finished writing itself: offered any earlier it competes
+             with the message, which is the one thing this page exists to
+             deliver. ink.js reveals the row; keep.js owns the two saves and
+             hides "save video" where the browser cannot record a canvas. -->
+        <div id="offer" class="hidden">
+            <button type="button" id="save-photo">save photo</button>
+            <button type="button" id="save-video" hidden>save video</button>
+            <a id="write-yours" href="index.html">write your own</a>
+        </div>
+        <div id="keep-say" hidden></div>
 
         <div id="debug-panel" style="display:none">
             <div class="dbg-row">
@@ -101,10 +108,11 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
-    <script src="script.js?v=17"></script>
-    <script src="backdrop.js?v=17"></script>
-    <script src="silhouette.js?v=17"></script>
-    <script src="link.js?v=17"></script>
-    <script src="ink.js?v=17"></script>
+    <script src="script.js?v=18"></script>
+    <script src="backdrop.js?v=18"></script>
+    <script src="silhouette.js?v=18"></script>
+    <script src="link.js?v=18"></script>
+    <script src="ink.js?v=18"></script>
+    <script src="keep.js?v=18"></script>
 </body>
 </html>

@@ -525,7 +525,7 @@ two are for local testing only. Note when testing: `localStorage` is per-origin 
 navigation, so a "no message" case tested in a context that earlier stored one will silently load the
 old message instead. Use a fresh browser context for those.
 
-**`#write-yours` is the only thing ever offered to a recipient**, and it waits. It is hidden until the
+**`#offer` is everything ever offered to a recipient**, and it waits. It is hidden until the
 last stroke has landed — offered while the message is still writing itself it competes with the one
 thing the page exists to deliver — and it is withdrawn again if the note leaves the fully-open state,
 so it can never be tapped over a folded note. `ink.js` owns that timing, since it is what knows when
@@ -534,7 +534,38 @@ it appears at once alongside the explanation.
 
 It is quiet warm text on the desk with a hairline outline, like the write page's chrome. **A lit
 button here would be an advert sitting next to someone's handwriting.** `.hidden` sets
-`pointer-events: none` as well as `opacity: 0`, so it is untappable rather than merely invisible.
+`pointer-events: none` as well as `opacity: 0`, so nothing in it is tappable rather than merely
+invisible.
+
+### Keeping the note (`keep.js`)
+
+A note lives inside its link and nowhere else, so the one thing a recipient could not do was keep it.
+`keep.js` builds a keepsake: **save photo** (the finished note) and **save video** (the message
+writing itself, in its real rhythm). It delivers through `navigator.share` with a file where that
+exists — the only route that reaches a phone's gallery — and falls back to a download link.
+
+**It does not screenshot the page, and could not.** The note is CSS 3D — hinged, bent, vignetted —
+and nothing in the browser can rasterise that. Instead the keepsake is rebuilt from parts: the
+artwork at full resolution, a little warm ground and shadow, and the strokes drawn by `ink.js`'s own
+painter via `UnwrappedInk.paintInto`. That seam exists so the curve maths is not transcribed a
+**third** time; if `ink.js` and `write.js` are tuned, the keepsake follows for free. The ink is
+multiplied onto the artwork there too, so it soaks in the same way.
+
+**The video deliberately does NOT contain the unfolding.** A faithful recording would need a second
+renderer of the fold — 28 perspective-mapped quads a frame — that would drift from the real one, and
+a cheap 2D approximation is exactly the scale-and-slide fake in Rejected Approaches. Better to offer
+the half that can be true. If it is ever wanted for real, the route is WebGL, not 2D canvas.
+
+Two traps, both hit:
+
+- **A captured canvas emits a frame only when something paints into it, and identical frames are
+  dropped.** The still hold at the end produced nothing, so the video stopped dead on the last stroke.
+  Every tick now makes one imperceptible mark on the darkest corner of the ground, which keeps frames
+  coming while the finished note is simply held. `requestFrame` with `captureStream(0)` was tried
+  first and did not fix it.
+- **A `MediaRecorder` webm carries no seek cues**, so setting `currentTime` on it snaps back to the
+  first frame. A check that seeked through the file reported an empty video twice while the file was
+  perfectly good. **Verify a recording by playing it and sampling as it goes.**
 
 ---
 
@@ -618,6 +649,7 @@ Unwrapped/
     backdrop.js          the surface it lies on
     silhouette.js        folded-back faces
     ink.js               handwriting on the paper
+    keep.js              save the note as a photo or a video
     message.json         (optional — a local test message for note.html)
 ```
 

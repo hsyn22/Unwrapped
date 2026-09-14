@@ -75,7 +75,7 @@
     const scene = document.getElementById('paper-scene');
     const fold1 = document.getElementById('fold1');
     const hint  = document.getElementById('hint');
-    const mine  = document.getElementById('write-yours');
+    const offer = document.getElementById('offer');
     if (!scene || !fold1) return;
 
     // Every front face gets a canvas: the two static quadrants, plus one per
@@ -265,7 +265,12 @@
     // landed: offered while the message is still being written it competes
     // with it, and the message is the only thing this page is for.
     function offerToWrite(on) {
-        if (mine) mine.classList.toggle('hidden', !on);
+        if (offer) offer.classList.toggle('hidden', !on);
+        // "Swipe up to unfold" is meaningless once the note has been read, and
+        // it sits exactly where the offer row does. script.js hides it on a
+        // real full-open, but the debug buttons leave isFullyOpen false, so
+        // say it here too rather than relying on that.
+        if (hint && on) hint.classList.add('hidden');
     }
 
     function redrawSoFar() {
@@ -382,6 +387,58 @@
             .then(r => (r.ok ? r.json() : null))
             .catch(() => null);   // absent, or file:// — no message, not an error
     }
+
+    // ====================================================================
+    // THE MESSAGE, FOR ANYONE ELSE WHO NEEDS TO DRAW IT
+    //
+    // keep.js composes a keepsake — a photo of the finished note, or a video
+    // of it being written — at a completely different size, on its own canvas.
+    // It must produce the same letterforms, so the strokes are published here
+    // rather than copied. A third transcription of the curve maths is exactly
+    // what this project does not need.
+    // ====================================================================
+
+    // Replay time in ms from the first mark to the last, lead-in excluded.
+    function duration() {
+        if (!strokes || !strokes.length) return 0;
+        const last = strokes[strokes.length - 1];
+        const end = last.samples.length ? last.samples[last.samples.length - 1].t : 0;
+        return last.adj + end;
+    }
+
+    // Draw the segments whose time falls in (from, to] into any 2D context,
+    // where `scale` is what one unit of paper width measures there. Drawing a
+    // range rather than everything keeps a recording additive, the same way the
+    // note itself is: each frame adds only what is new.
+    function paintInto(ctx, scale, from, to) {
+        if (!strokes) return;
+        ctx.save();
+        ctx.lineCap  = 'round';
+        ctx.lineJoin = 'round';
+        strokes.forEach(s => {
+            for (let j = 1; j < s.samples.length; j++) {
+                const a = s.samples[j - 1], b = s.samples[j];
+                const t = s.adj + b.t;
+                if (t <= from) continue;
+                if (t > to) break;
+                const mw = (a.w + b.w) * 0.5;
+                ctx.lineWidth   = mw * scale;
+                ctx.strokeStyle = inkFor(mw);
+                ctx.beginPath();
+                ctx.moveTo(a.x * scale, a.y * scale);
+                ctx.lineTo(b.x * scale, b.y * scale);
+                ctx.stroke();
+            }
+        });
+        ctx.restore();
+    }
+
+    window.UnwrappedInk = {
+        ready:     () => !!strokes,
+        duration,
+        paintInto,
+        leadIn:    REPLAY.leadIn
+    };
 
     layout();
     window.addEventListener('resize', () => {
