@@ -521,7 +521,20 @@ and a worst coordinate error of 0.0001. **Any format change MUST bump `VERSION` 
 working**, or every link anyone has already sent stops opening.
 
 **Message source, in order:** the link (`#m=…`), then `localStorage`, then `message.json`. The last
-two are for local testing only.
+two are for local testing only. Note when testing: `localStorage` is per-origin and survives
+navigation, so a "no message" case tested in a context that earlier stored one will silently load the
+old message instead. Use a fresh browser context for those.
+
+**`#write-yours` is the only thing ever offered to a recipient**, and it waits. It is hidden until the
+last stroke has landed — offered while the message is still writing itself it competes with the one
+thing the page exists to deliver — and it is withdrawn again if the note leaves the fully-open state,
+so it can never be tapped over a folded note. `ink.js` owns that timing, since it is what knows when
+the replay finished. When a link carries no note, or a damaged one, there is nothing to wait for and
+it appears at once alongside the explanation.
+
+It is quiet warm text on the desk with a hairline outline, like the write page's chrome. **A lit
+button here would be an advert sitting next to someone's handwriting.** `.hidden` sets
+`pointer-events: none` as well as `opacity: 0`, so it is untappable rather than merely invisible.
 
 ---
 

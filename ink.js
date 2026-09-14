@@ -75,6 +75,7 @@
     const scene = document.getElementById('paper-scene');
     const fold1 = document.getElementById('fold1');
     const hint  = document.getElementById('hint');
+    const mine  = document.getElementById('write-yours');
     if (!scene || !fold1) return;
 
     // Every front face gets a canvas: the two static quadrants, plus one per
@@ -260,6 +261,13 @@
     let raf = null;
     let t0 = 0, si = 0, k = 0;
 
+    // The way in for whoever received this. It waits until the last stroke has
+    // landed: offered while the message is still being written it competes
+    // with it, and the message is the only thing this page is for.
+    function offerToWrite(on) {
+        if (mine) mine.classList.toggle('hidden', !on);
+    }
+
     function redrawSoFar() {
         clearInk();
         for (let i = 0; i < si && i < strokes.length; i++) {
@@ -301,7 +309,12 @@
                 if (k >= s.samples.length) { si++; k = 0; } else break;
             }
 
-            raf = si < strokes.length ? requestAnimationFrame(frame) : null;
+            if (si < strokes.length) {
+                raf = requestAnimationFrame(frame);
+            } else {
+                raf = null;
+                offerToWrite(true);   // the note is written; now they can reply
+            }
         })();
     }
 
@@ -332,15 +345,17 @@
                 startReplay();
             } else if (!noMessage && hint) {
                 noMessage = true;
+                offerToWrite(true);   // nothing to read, so offer it at once
                 hint.textContent = badLink
                     ? 'this link is damaged — ask for a new one'
-                    : 'this link has no note in it — write one on the main page';
+                    : 'there is no note in this link';
                 hint.classList.remove('hidden');
             }
         } else if (!open && played) {
             played = false;
             stopReplay();
             clearInk();
+            offerToWrite(false);
         }
     }
 
