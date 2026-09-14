@@ -174,6 +174,72 @@ canvas.ink { mix-blend-mode: multiply; }
 
 #hint.hidden { opacity: 0; }
 
+/* Everything offered to a recipient, and only once they have read the note.
+   Quiet warm text on the desk, like the write page's chrome: lit buttons here
+   would be an advert sitting next to someone's handwriting. */
+#offer {
+    position: absolute;
+    bottom: 6vh;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 12px;
+    transition: opacity 0.7s ease;
+    z-index: 2;
+}
+
+#offer button,
+#offer a {
+    padding: 9px 13px;
+    font: inherit;
+    font-size: 0.73rem;
+    letter-spacing: 0.06em;
+    color: #e6d3b8;
+    opacity: 0.6;
+    background: transparent;
+    text-decoration: none;
+    white-space: nowrap;
+    border: 1px solid #ffe9c72b;
+    border-radius: 999px;
+    touch-action: manipulation;
+}
+
+#offer button:active,
+#offer a:active { opacity: 1; background: #ffe9c714; }
+
+#offer button:disabled { opacity: 0.3; }
+
+/* An id rule with a display beats [hidden] — the trap this project has hit
+   three times now — and keep.js unhides this one only where the browser can
+   actually record a canvas. */
+#save-video[hidden] { display: none; }
+
+/* Not merely invisible — untappable, so nothing here can be caught by a
+   stray finger while the note is still folded. */
+#offer.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Whatever keep.js has to say, and only when it has something. */
+#keep-say[hidden] { display: none; }
+
+#keep-say {
+    position: absolute;
+    bottom: 2.6vh;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: #e6d3b88c;
+    padding: 0 12px;
+    z-index: 2;
+}
+
 #debug-panel {
     position: fixed;
     top: max(10px, env(safe-area-inset-top));
