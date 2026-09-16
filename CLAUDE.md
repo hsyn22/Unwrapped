@@ -510,15 +510,49 @@ maximum step is **2 levels of 255** with no gap columns.
 fits in the URL. Nothing about a note is stored anywhere: send the link and it works, delete it and it
 is gone. `link.js` packs it by hand —
 
+- the points are **thinned** before anything else, and that is where most of the saving comes from
+  (see below);
 - points are stored as **deltas**, since consecutive samples of a finger are close in space and time,
   so dx, dy and dt almost always fit in one varint byte each: about three bytes a point where the
   JSON spends thirty;
 - coordinates are quantised to **1/4096 of the paper's width**, well under a tenth of a pixel;
 - the payload is deflated when the browser can (a flag byte records whether it was) and base64url'd.
 
-A five-stroke, 129-point note lands at **549 characters** of URL, round-tripping with zero timing error
-and a worst coordinate error of 0.0001. **Any format change MUST bump `VERSION` and keep the old path
-working**, or every link anyone has already sent stops opening.
+**Any format change MUST bump `VERSION` and keep the old path working**, or every link anyone has
+already sent stops opening.
+
+**A phone samples a finger far faster than the pen is thick, and that was the whole length problem.**
+A real 19-stroke message measured 1243 points at a median 8ms apart — and the median gap between
+consecutive points was **0.71 of the THINNEST stroke width**. Two thirds of the points were describing
+detail finer than the line drawn through them. The bytes split almost exactly evenly: 32% dx, 32% dy,
+32% timing, so there was no single thing to cut — the answer was fewer points, not smaller ones.
+
+So `link.js` runs **Ramer-Douglas-Peucker** over each stroke at encode time, dropping points that sit
+on the line between their neighbours. Replay re-smooths with Catmull-Rom anyway, so the letterforms
+survive. On that message: **1243 points to 324, and the link from 3308 characters to 1459 — 56%
+shorter** — with the rendered handwriting at **IoU 0.9999** against the original and no measurable
+change in replay length.
+
+**This is an ENCODER-SIDE choice and needs no version bump.** The bytes it writes have exactly the
+layout they always had, so every link already sent still opens; only new links get shorter. Keep it
+that way if you extend it.
+
+Two dials, both measured rather than guessed:
+
+- `THIN_EPS` (0.0012 of paper width, about a third of a pixel and under a third of `MIN_W`) — how far
+  a dropped point may sit from the line through its neighbours. Sweeping it, 0.0012 is the knee:
+  looser buys a few percent for much more error.
+- `THIN_MAX_DT` (60ms) — **but never let this much time pass between two kept points.** Stroke width
+  comes from the velocity between them, so a long gap averages the pen's speed away and the nib goes
+  flat, undoing `V_SLOW`/`V_FAST`. Without the cap the nib's range collapsed from 74% to 53%; with it,
+  61%. The p10-p90 band a reader actually sees is 32% either way, unchanged.
+
+Going further needs a format change and is **not** obviously worth it: coarsening to Q 1024 and 4ms
+time units buys only another ~25% (1224 to 916 characters on the same message) in exchange for
+breaking every link ever sent unless a v3 decoder is carried forever.
+
+Note the sender's own preview on the write page replays the **full-fidelity** strokes, not the thinned
+ones — `serialize()` is untouched and only `encode` thins. The difference is under half a pixel.
 
 **Message source, in order:** the link (`#m=…`), then `localStorage`, then `message.json`. The last
 two are for local testing only. Note when testing: `localStorage` is per-origin and survives
